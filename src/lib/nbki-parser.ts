@@ -16,7 +16,7 @@ function after(text: string, labels: string[], value: string, window = 160): str
   for (const label of labels) {
     const re = new RegExp(`${label}[\\s\\S]{0,${window}}?(${value})`, "i");
     const m = text.match(re);
-    if (m) return clean(m[1]);
+    if (m) return clean(m[1] ?? "");
   }
   return "";
 }
@@ -27,7 +27,7 @@ function lineAfter(text: string, labels: string[]): string {
     const re = new RegExp(`${label}\\s*[:\\-–]?\\s*([^\\n]*)(?:\\n([^\\n]*))?`, "i");
     const m = text.match(re);
     if (m) {
-      const v = clean(m[1]) || clean(m[2] ?? "");
+      const v = clean(m[1] ?? "") || clean(m[2] ?? "");
       if (v && v.length > 2) return v.replace(/^[:\-–\s]+/, "");
     }
   }
@@ -38,21 +38,21 @@ function parseName(text: string): string {
   const fio = lineAfter(text, ["ФИО", "Ф\\.И\\.О\\.", "Субъект кредитной истории"]);
   if (/^[А-ЯЁ][а-яё-]+\s+[А-ЯЁ][а-яё-]+(\s+[А-ЯЁ][а-яё-]+)?/i.test(fio)) {
     const m = fio.match(/^([А-ЯЁа-яё-]+\s+[А-ЯЁа-яё-]+(?:\s+[А-ЯЁа-яё-]+)?)/);
-    if (m) return titleCase(m[1]);
+    if (m) return titleCase(m[1] ?? "");
   }
   const last = after(text, ["Фамилия"], "[А-ЯЁ][А-ЯЁа-яё-]+", 20);
   const first = after(text, ["(?<!Отчество\\s)Имя"], "[А-ЯЁ][А-ЯЁа-яё-]+", 20);
   const middle = after(text, ["Отчество"], "[А-ЯЁ][А-ЯЁа-яё-]+", 20);
   if (last && first) return titleCase([last, first, middle].filter(Boolean).join(" "));
   const upper = text.match(/\b([А-ЯЁ]{2,}(?:-[А-ЯЁ]{2,})?\s+[А-ЯЁ]{2,}\s+[А-ЯЁ]{2,}(?:ВИЧ|ВНА|ИЧ|ЫЧ|КЫЗЫ|ОГЛЫ))\b/);
-  return upper ? titleCase(upper[1]) : "";
+  return upper ? titleCase(upper[1] ?? "") : "";
 }
 
 function titleCase(s: string) {
   return s
     .toLowerCase()
     .split(/(\s|-)/)
-    .map((w) => (w.trim() && w !== "-" ? w[0].toUpperCase() + w.slice(1) : w))
+    .map((w) => (w.trim() && w !== "-" ? w.charAt(0).toUpperCase() + w.slice(1) : w))
     .join("");
 }
 
@@ -70,8 +70,8 @@ export function parsePerson(text: string): Person {
   } else {
     const m = text.match(/Паспорт[\s\S]{0,80}?(\d{2}\s?\d{2})\s*(?:№|N|номер)?\s*(\d{6})/i);
     if (m) {
-      p.passportSeries = m[1].replace(/\s/g, "");
-      p.passportNumber = m[2];
+      p.passportSeries = (m[1] ?? "").replace(/\s/g, "");
+      p.passportNumber = m[2] ?? "";
     }
   }
   p.passportIssueDate = after(text, ["Дата выдачи"], DATE, 40);
@@ -116,7 +116,7 @@ function findCreditorName(block: string): string {
   const m = block.match(
     /((?:Банк ВТБ \(ПАО\))|(?:(?:ПАО|АО|ООО|НАО|ЗАО|ОАО|КБ)(?:\s+(?:МФК|МКК|ПКО|КБ|Банк))?\s*[«"“][^»"”\n]{2,60}[»"”](?:\s*\((?:ПАО|АО|ООО)\))?))/,
   );
-  return m ? clean(m[1]) : "";
+  return m ? clean(m[1] ?? "") : "";
 }
 
 let seq = 0;
@@ -179,7 +179,7 @@ export function parseContracts(text: string): Contract[] {
   hits.forEach((h, i) => {
     const start = h.index ?? 0;
     const end = hits[i + 1]?.index ?? Math.min(text.length, start + 3000);
-    const prevEnd = i > 0 ? (hits[i - 1].index ?? 0) + h[0].length : 0;
+    const prevEnd = i > 0 ? (hits[i - 1]?.index ?? 0) + h[0].length : 0;
     const lookbehind = text.slice(Math.max(prevEnd, start - 500), start);
     const c = parseBlock(text.slice(start + h[0].length, end), lookbehind, h[0]);
     const prev = result.get(c.uid);

@@ -79,7 +79,7 @@ describe("NBKI parser", () => {
 
 describe("Statement text follows the chosen basis", () => {
   const { person, contracts } = parseNbkiText(SAMPLE);
-  const c = contracts[0];
+  const c = contracts[0]!;
   const service = { unit: "в/ч 12345", contractDate: "10.01.2025" };
 
   it("art. 2.1 asks to terminate obligations up to 10 mln", () => {

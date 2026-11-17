@@ -47,13 +47,11 @@ export async function extractPdfText(data: ArrayBuffer): Promise<string> {
       for (const raw of content.items) {
         const it = raw as TextItem;
         if (typeof it.str !== "string" || !it.transform) continue;
-        const x = it.transform[4];
-        const y = it.transform[5];
-        let line = lines.find((l) => Math.abs(l.y - y) < 3);
-        if (!line) {
-          line = { y, parts: [] };
-          lines.push(line);
-        }
+        const x = it.transform[4] ?? 0;
+        const y = it.transform[5] ?? 0;
+        const existing = lines.find((l) => Math.abs(l.y - y) < 3);
+        const line = existing ?? { y, parts: [] };
+        if (!existing) lines.push(line);
         line.parts.push({ x, s: it.str });
       }
       lines.sort((a, b) => b.y - a.y);

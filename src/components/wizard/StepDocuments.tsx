@@ -19,6 +19,7 @@ export function StepDocuments({ person, service, contracts, onBack, onRestart }:
 
   async function downloadOne(i: number) {
     const d = docs[i];
+    if (!d) return;
     try {
       downloadBlob(await statementToDocx(d.statement), d.file);
     } catch (e) {

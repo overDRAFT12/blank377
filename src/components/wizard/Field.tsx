@@ -14,9 +14,9 @@ export function Field({
   label: string;
   value: string;
   onChange: (v: string) => void;
-  placeholder?: string;
-  className?: string;
-  inputMode?: "text" | "numeric" | "email" | "tel";
+  placeholder?: string | undefined;
+  className?: string | undefined;
+  inputMode?: "text" | "numeric" | "email" | "tel" | undefined;
   hint?: ReactNode;
 }) {
   return (

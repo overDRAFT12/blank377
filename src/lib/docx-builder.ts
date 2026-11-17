@@ -5,7 +5,7 @@ export async function statementToDocx(s: Statement): Promise<Blob> {
   const { Document, Packer, Paragraph, TextRun, AlignmentType } = await import("docx");
   const FONT = "Times New Roman";
   const size = 24; // 12pt
-  const run = (text: string, opts: { bold?: boolean } = {}) => new TextRun({ text, font: FONT, size, bold: opts.bold });
+  const run = (text: string, opts: { bold?: boolean } = {}) => new TextRun({ text, font: FONT, size, bold: opts.bold ?? false });
   const header = (text: string) =>
     new Paragraph({ children: [run(text)], indent: { left: 5100 }, spacing: { after: 0 } });
   const body = (text: string) =>

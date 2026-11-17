@@ -48,7 +48,7 @@ export function buildStatement(person: Person, service: Service, c: Contract, to
   const sender = [
     `От: ${v(person.fullName)}`,
     `Дата рождения: ${v(person.birthDate)}${person.birthPlace ? `, место рождения: ${person.birthPlace}` : ""}`,
-    passport[0].toUpperCase() + passport.slice(1),
+    passport.charAt(0).toUpperCase() + passport.slice(1),
     person.snils ? `СНИЛС: ${person.snils}` : "",
     person.inn ? `ИНН: ${person.inn}` : "",
     `Адрес регистрации: ${v(person.address)}`,
