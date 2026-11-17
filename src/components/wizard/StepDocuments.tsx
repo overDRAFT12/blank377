@@ -79,7 +79,7 @@ export function StepDocuments({ person, service, contracts, onBack, onRestart }:
 
       <ul className="space-y-3">
         {docs.map((d, i) => (
-          <li key={d.c.id} className="surface-card flex flex-col gap-4 p-5 md:flex-row md:items-center md:justify-between md:p-6">
+          <li key={d.c.id} className="surface-card flex flex-col gap-4 p-5 md:p-6">
             <div className="min-w-0">
               <p className="truncate font-semibold">{d.c.creditorName || "Кредитор не указан"}</p>
               <p className="truncate text-sm text-muted-foreground">
