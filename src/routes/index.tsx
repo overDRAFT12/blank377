@@ -110,7 +110,7 @@ function Index() {
             alt="Стопка готовых документов с синей отметкой и замком — символ конфиденциальной подготовки заявлений"
             width={1600}
             height={912}
-            className="fade-up w-full rounded-[32px] [animation-delay:240ms]"
+            className="fade-up w-full rounded-[32px] mix-blend-multiply [animation-delay:240ms]"
           />
         </div>
       </section>
