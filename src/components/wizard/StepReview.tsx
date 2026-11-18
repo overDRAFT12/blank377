@@ -58,7 +58,7 @@ export function StepReview(props: Props) {
   return (
     <div className="space-y-5">
       <Card title="Личные данные" icon={<User className="size-5" />}>
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-[minmax(0,1fr)] gap-4 sm:grid-cols-2">
           {PERSON_FIELDS.map((f) => (
             <Field
               key={f.key}
@@ -74,7 +74,7 @@ export function StepReview(props: Props) {
       </Card>
 
       <Card title="Данные о службе" icon={<Briefcase className="size-5" />}>
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-[minmax(0,1fr)] gap-4 sm:grid-cols-2">
           <Field
             label="Подразделение / воинская часть"
             placeholder="в/ч 00000"
@@ -110,7 +110,8 @@ export function StepReview(props: Props) {
         icon={<Building2 className="size-5" />}
         action={
           <Button variant="tint" size="sm" className="px-4" onClick={addContract}>
-            <Plus /> Добавить займ
+            <Plus /> <span className="hidden sm:inline">Добавить займ</span>
+            <span className="sr-only sm:hidden">Добавить займ</span>
           </Button>
         }
       >
@@ -128,7 +129,7 @@ export function StepReview(props: Props) {
             const open = openId === c.id;
             return (
               <li key={c.id} className={cn("rounded-2xl border transition-colors", c.selected ? "border-primary/40 bg-primary-soft/40" : "border-border")}>
-                <div className="flex items-center gap-4 p-4">
+                <div className="flex items-center gap-3 p-4 sm:gap-4">
                   <Checkbox
                     checked={c.selected}
                     onCheckedChange={(v) => update(c.id, { selected: v === true })}
@@ -137,12 +138,13 @@ export function StepReview(props: Props) {
                   <button className="min-w-0 flex-1 text-left" onClick={() => setOpenId(open ? null : c.id)}>
                     <p className="truncate font-medium">{c.creditorName || "Новый договор"}</p>
                     <p className="truncate text-sm text-muted-foreground">{contractMeta(c) || "Заполните реквизиты"}</p>
+                    <StatusBadge status={c.status} className="mt-1.5 inline-block sm:hidden" />
                   </button>
-                  <StatusBadge status={c.status} />
+                  <StatusBadge status={c.status} className="hidden sm:inline-block" />
                   <button
                     onClick={() => setOpenId(open ? null : c.id)}
                     aria-label="Редактировать"
-                    className="rounded-full p-1.5 text-muted-foreground hover:bg-secondary"
+                    className="shrink-0 rounded-full p-1.5 text-muted-foreground hover:bg-secondary"
                   >
                     <ChevronDown className={cn("size-5 transition-transform", open && "rotate-180")} />
                   </button>
@@ -154,11 +156,11 @@ export function StepReview(props: Props) {
         </ul>
       </Card>
 
-      <div className="flex items-center justify-between gap-3 pt-2">
-        <Button variant="soft" size="lg" onClick={props.onBack}>
+      <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row sm:items-center sm:justify-between">
+        <Button variant="soft" size="lg" className="w-full sm:w-auto" onClick={props.onBack}>
           Назад
         </Button>
-        <Button variant="pill" size="lg" disabled={selectedCount === 0} onClick={props.onNext}>
+        <Button variant="pill" size="lg" className="w-full sm:w-auto" disabled={selectedCount === 0} onClick={props.onNext}>
           Сформировать документы{selectedCount ? ` (${selectedCount})` : ""}
         </Button>
       </div>
@@ -196,7 +198,7 @@ function ContractEditor({ contract: c, onChange, onRemove }: { contract: Contrac
           </SelectContent>
         </Select>
       </label>
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-4 sm:grid-cols-2">
         <Field className="sm:col-span-2" label="Наименование кредитора" value={c.creditorName} onChange={(v) => onChange({ creditorName: v })} />
         <Field label="ИНН кредитора" inputMode="numeric" value={c.creditorInn} onChange={(v) => onChange({ creditorInn: v })} />
         <Field label="ОГРН кредитора" inputMode="numeric" value={c.creditorOgrn} onChange={(v) => onChange({ creditorOgrn: v })} />

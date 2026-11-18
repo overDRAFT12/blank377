@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Copy, Download, FileArchive, FileText, Heart, Loader2, Mail, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { DonateDialog } from "@/components/site/DonateDialog";
 import { buildStatement, emailBody, emailSubject, fileNameFor } from "@/lib/statement";
 import { downloadBlob, statementToDocx, zipBlobs } from "@/lib/docx-builder";
@@ -12,6 +13,9 @@ type Props = { person: Person; service: Service; contracts: Contract[]; onBack: 
 
 export function StepDocuments({ person, service, contracts, onBack, onRestart }: Props) {
   const [zipping, setZipping] = useState(false);
+  // Обязательное подтверждение: без него файлы не скачиваются и письма не готовятся.
+  const [confirmed, setConfirmed] = useState(false);
+  const locked = !confirmed;
   const docs = useMemo(
     () => contracts.map((c, i) => ({ c, file: fileNameFor(c, i), statement: buildStatement(person, service, c) })),
     [person, service, contracts],
@@ -19,7 +23,7 @@ export function StepDocuments({ person, service, contracts, onBack, onRestart }:
 
   async function downloadOne(i: number) {
     const d = docs[i];
-    if (!d) return;
+    if (!d || locked) return;
     try {
       downloadBlob(await statementToDocx(d.statement), d.file);
     } catch (e) {
@@ -29,6 +33,7 @@ export function StepDocuments({ person, service, contracts, onBack, onRestart }:
   }
 
   async function downloadAll() {
+    if (locked) return;
     setZipping(true);
     try {
       const files = await Promise.all(docs.map(async (d) => ({ name: d.file, blob: await statementToDocx(d.statement) })));
@@ -69,9 +74,20 @@ export function StepDocuments({ person, service, contracts, onBack, onRestart }:
         <p className="mx-auto mt-2 max-w-md text-muted-foreground">
           {docs.length} {plural(docs.length, ["заявление", "заявления", "заявлений"])} · {BASIS_LABELS[service.basis]}
         </p>
-        <Button variant="hero" size="xl" className="mt-8" onClick={downloadAll} disabled={zipping}>
+        <label
+          htmlFor="confirm-data"
+          className="mx-auto mt-8 flex max-w-md cursor-pointer items-start gap-3 rounded-2xl border border-border bg-background p-4 text-left text-sm leading-relaxed has-[[data-state=checked]]:border-primary/40 has-[[data-state=checked]]:bg-primary-soft/50"
+        >
+          <Checkbox id="confirm-data" checked={confirmed} onCheckedChange={(v) => setConfirmed(v === true)} className="mt-0.5" />
+          <span>
+            Я проверил(а) свои данные и реквизиты кредиторов и понимаю, что сервис не оказывает юридических услуг.
+            <span className="text-destructive"> *</span>
+          </span>
+        </label>
+        <Button variant="hero" size="xl" className="mt-6 w-full sm:w-auto" onClick={downloadAll} disabled={zipping || locked}>
           {zipping ? <Loader2 className="animate-spin" /> : <FileArchive />} Скачать все заявления (ZIP)
         </Button>
+        {locked && <p className="mt-3 text-xs text-muted-foreground">Отметьте подтверждение, чтобы скачать документы.</p>}
         <p className="mx-auto mt-4 max-w-md text-xs text-muted-foreground">
           Перед отправкой распечатайте и подпишите заявление или приложите скан с подписью к письму.
         </p>
@@ -79,25 +95,34 @@ export function StepDocuments({ person, service, contracts, onBack, onRestart }:
 
       <ul className="space-y-3">
         {docs.map((d, i) => (
-          <li key={d.c.id} className="surface-card flex flex-col gap-4 p-5 md:p-6">
-            <div className="min-w-0">
-              <p className="truncate font-semibold">{d.c.creditorName || "Кредитор не указан"}</p>
-              <p className="truncate text-sm text-muted-foreground">
-                {contractMeta(d.c) || "—"}
-                {d.c.creditorEmail ? ` · ${d.c.creditorEmail}` : ""}
-              </p>
+          <li key={d.c.id} className="surface-card p-5 md:p-6">
+            <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-4">
+              <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-primary-soft text-primary">
+                <FileText className="size-5" />
+              </span>
+              <div className="min-w-0">
+                <p className="truncate font-semibold">{d.c.creditorName || "Кредитор не указан"}</p>
+                <p className="text-sm text-muted-foreground">{contractMeta(d.c) || "—"}</p>
+                {d.c.creditorEmail && <p className="truncate text-sm text-muted-foreground">{d.c.creditorEmail}</p>}
+              </div>
             </div>
-            <div className="flex shrink-0 flex-wrap gap-2">
-              <Button variant="tint" size="sm" className="px-3.5" onClick={() => downloadOne(i)}>
+            <div className="mt-4 grid gap-2 sm:grid-cols-3">
+              <Button variant="tint" size="lg" className="w-full px-3" disabled={locked} onClick={() => downloadOne(i)}>
                 <Download /> Скачать .docx
               </Button>
-              <Button asChild variant="soft" size="sm" className="px-3.5">
-                <a href={mailto(d.c)}>
+              {locked ? (
+                <Button variant="soft" size="lg" className="w-full px-3" disabled>
                   <Mail /> Открыть в почте
-                </a>
-              </Button>
-              <Button variant="soft" size="sm" className="px-3.5" onClick={() => copyLetter(d.c)}>
-                <Copy /> Скопировать текст письма
+                </Button>
+              ) : (
+                <Button asChild variant="soft" size="lg" className="w-full px-3">
+                  <a href={mailto(d.c)}>
+                    <Mail /> Открыть в почте
+                  </a>
+                </Button>
+              )}
+              <Button variant="soft" size="lg" className="w-full px-3" disabled={locked} onClick={() => copyLetter(d.c)}>
+                <Copy /> Скопировать письмо
               </Button>
             </div>
           </li>

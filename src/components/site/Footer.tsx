@@ -1,5 +1,5 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { SITE_NAME, SUPPORT_EMAIL } from "@/lib/site";
+import { SITE_NAME, SUPPORT_TELEGRAM } from "@/lib/site";
 import { LEGAL_DOCS } from "./legal-texts";
 
 export function Footer() {
@@ -38,9 +38,7 @@ export function Footer() {
                 </DialogContent>
               </Dialog>
             ))}
-            <a href={`mailto:${SUPPORT_EMAIL}`} className="text-foreground/70 hover:text-foreground">
-              Обратная связь: {SUPPORT_EMAIL}
-            </a>
+            <span className="select-all text-foreground/70">Поддержка в Telegram: {SUPPORT_TELEGRAM}</span>
           </div>
         </div>
       </div>

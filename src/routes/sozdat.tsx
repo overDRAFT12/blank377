@@ -76,7 +76,7 @@ function Wizard() {
                   >
                     {done ? <Check className="size-3.5" strokeWidth={3} /> : i + 1}
                   </span>
-                  <span className={cn("truncate text-[13px] font-medium", current ? "text-foreground" : "text-muted-foreground")}>{label}</span>
+                  <span className={cn("min-w-0 text-[12px] font-medium leading-tight sm:text-[13px]", current ? "text-foreground" : "text-muted-foreground")}>{label}</span>
                 </div>
               </button>
             </li>

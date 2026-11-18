@@ -1,12 +1,13 @@
 import { cn } from "@/lib/utils";
 import type { Contract } from "@/lib/types";
 
-export function StatusBadge({ status }: { status: Contract["status"] }) {
+export function StatusBadge({ status, className }: { status: Contract["status"]; className?: string }) {
   return (
     <span
       className={cn(
         "shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium",
         status === "active" ? "bg-success/15 text-success" : "bg-secondary text-muted-foreground",
+        className,
       )}
     >
       {status === "active" ? "Действующий" : "Закрыт"}
