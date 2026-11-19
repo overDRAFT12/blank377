@@ -178,3 +178,9 @@
     transform: translateY(0);
   }
 }
+
+/* Radix выключает pointer-events на body, пока открыт модальный диалог, —
+   уведомления должны оставаться кликабельными поверх него. */
+.toaster [data-sonner-toast] {
+  pointer-events: auto;
+}

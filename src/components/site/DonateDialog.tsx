@@ -1,26 +1,46 @@
 import { useState, type ReactNode } from "react";
-import { Heart } from "lucide-react";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Heart, Info } from "lucide-react";
+import { toast } from "sonner";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { DONATE_LINKS } from "@/lib/site";
+import { SBP_NOTICE, SUPPORT_TELEGRAM, SUPPORT_TELEGRAM_URL } from "@/lib/site";
 
 const AMOUNTS = [100, 300, 500, 1000];
 
 export function DonateDialog({ children }: { children: ReactNode }) {
+  const [open, setOpen] = useState(false);
   const [amount, setAmount] = useState<number | null>(300);
   const [custom, setCustom] = useState("");
   const value = custom ? Number(custom.replace(/\D/g, "")) : amount;
 
-  const methods = [
-    { label: "СБП", href: DONATE_LINKS.sbp },
-    { label: "CloudTips", href: DONATE_LINKS.cloudtips },
-    { label: "ЮMoney", href: DONATE_LINKS.yoomoney },
-  ];
+  const showSbpNotice = () => {
+    // Закрываем окно, чтобы уведомление ничего не перекрывало и оставалось кликабельным.
+    setOpen(false);
+    toast.info(SBP_NOTICE, {
+      duration: 10000,
+      closeButton: true,
+      classNames: {
+        toast: "!rounded-2xl !border-border !bg-card !text-foreground !shadow-float",
+        description: "!text-muted-foreground !text-[14px] !leading-relaxed",
+      },
+      action: {
+        label: "Написать в Telegram",
+        onClick: () => window.open(SUPPORT_TELEGRAM_URL, "_blank", "noopener,noreferrer"),
+      },
+    });
+  };
 
   return (
-    <Dialog>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent>
         <DialogHeader className="items-center text-center">
@@ -56,17 +76,15 @@ export function DonateDialog({ children }: { children: ReactNode }) {
           onChange={(e) => setCustom(e.target.value.replace(/\D/g, "").slice(0, 7))}
           className="h-12 rounded-2xl text-center text-[15px]"
         />
-        <div className="grid gap-2">
-          {methods.map((m) => (
-            <Button key={m.label} asChild variant={m.label === "СБП" ? "pill" : "soft"} size="lg">
-              <a href={`${m.href}${value ? `?amount=${value}` : ""}`} target="_blank" rel="noreferrer">
-                {m.label === "СБП" ? `Перевести ${value || ""} ₽ через СБП` : `Через ${m.label}`}
-              </a>
-            </Button>
-          ))}
-        </div>
-        <p className="text-center text-xs text-muted-foreground">
-          Платежные ссылки ведут на внешние сервисы. Мы не получаем и не храним ваши платежные данные.
+        <Button variant="pill" size="lg" className="w-full" onClick={showSbpNotice}>
+          Поддержать через СБП{value ? ` ${value} ₽` : ""}
+        </Button>
+        <p className="flex items-start gap-2 text-center text-xs leading-relaxed text-muted-foreground">
+          <Info className="mt-0.5 size-3.5 shrink-0" />
+          <span>
+            Мы не получаем и не храним ваши платежные данные. Если что-то не получается — поддержка в Telegram{" "}
+            <span className="select-all font-medium text-foreground">{SUPPORT_TELEGRAM}</span>.
+          </span>
         </p>
       </DialogContent>
     </Dialog>

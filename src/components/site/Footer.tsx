@@ -33,7 +33,7 @@ export function Footer() {
                         ))}
                       </section>
                     ))}
-                    <p className="text-xs text-muted-foreground">Редакция от 01.01.2026</p>
+                    <p className="text-xs text-muted-foreground">Редакция от 19.11.2026</p>
                   </div>
                 </DialogContent>
               </Dialog>

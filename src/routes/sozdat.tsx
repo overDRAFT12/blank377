@@ -10,12 +10,12 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/sozdat")({
   head: () => ({
     meta: [
-      { title: "Мастер документов — Чистый лист" },
+      { title: "Мастер документов — Бланк 377" },
       {
         name: "description",
         content: "Загрузите отчет НБКИ, проверьте реквизиты и скачайте заявления в банки и МФО по ФЗ-377. Всё локально в браузере.",
       },
-      { property: "og:title", content: "Мастер документов — Чистый лист" },
+      { property: "og:title", content: "Мастер документов — Бланк 377" },
       { property: "og:description", content: "Три шага до готовых заявлений по ФЗ-377. Данные не покидают устройство." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },

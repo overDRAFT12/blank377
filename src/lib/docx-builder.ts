@@ -18,7 +18,7 @@ export async function statementToDocx(s: Statement): Promise<Blob> {
   const blank = () => new Paragraph({ children: [run("")] });
 
   const doc = new Document({
-    creator: "Чистый лист",
+    creator: "Бланк 377",
     title: `${s.title} ${s.subtitle}`,
     sections: [
       {

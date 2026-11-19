@@ -85,7 +85,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Чистый лист — заявления на списание долгов по ФЗ-377" },
+      { title: "Бланк 377 — заявления на списание долгов по ФЗ-377" },
       {
         name: "description",
         content:
