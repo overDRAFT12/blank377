@@ -1,12 +1,12 @@
 import { useState } from "react";
-import { Briefcase, Building2, ChevronDown, Plus, Trash2, User } from "lucide-react";
+import { Briefcase, Building2, ChevronDown, Gavel, Plus, Trash2, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CREDITORS } from "@/lib/creditors";
 import { emptyContract } from "@/lib/nbki-parser";
-import { BASIS_LABELS, type Basis, type Contract, type Person, type Service } from "@/lib/types";
+import { BASIS_LABELS, type Basis, type Contract, type Fssp, type Person, type Service } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { Card, Field } from "./Field";
 import { StatusBadge, contractMeta } from "./ContractSummary";
@@ -16,6 +16,8 @@ type Props = {
   setPerson: (p: Person) => void;
   service: Service;
   setService: (s: Service) => void;
+  fssp: Fssp;
+  setFssp: (f: Fssp) => void;
   contracts: Contract[];
   setContracts: (c: Contract[]) => void;
   showClosed: boolean;
@@ -33,6 +35,12 @@ const PERSON_FIELDS: { key: keyof Person; label: string; placeholder?: string; w
   { key: "passportIssueDate", label: "Дата выдачи", placeholder: "ДД.ММ.ГГГГ" },
   { key: "passportCode", label: "Код подразделения", placeholder: "000-000" },
   { key: "passportIssuedBy", label: "Кем выдан", wide: true },
+  {
+    key: "previousPassport",
+    label: "Прежние паспортные данные (если менялся паспорт — для проверки архива ФССП)",
+    placeholder: "серия 0000 № 000000, выдан …",
+    wide: true,
+  },
   { key: "snils", label: "СНИЛС", placeholder: "000-000-000 00" },
   { key: "inn", label: "ИНН", placeholder: "12 цифр", mode: "numeric" },
   { key: "address", label: "Адрес регистрации", wide: true },
@@ -41,7 +49,7 @@ const PERSON_FIELDS: { key: keyof Person; label: string; placeholder?: string; w
 ];
 
 export function StepReview(props: Props) {
-  const { person, setPerson, service, setService, contracts, setContracts, showClosed, onShowClosed } = props;
+  const { person, setPerson, service, setService, fssp, setFssp, contracts, setContracts, showClosed, onShowClosed } = props;
   const [openId, setOpenId] = useState<string | null>(null);
   const visible = showClosed ? contracts : contracts.filter((c) => c.status === "active");
   const selectedCount = contracts.filter((c) => c.selected && (showClosed || c.status === "active")).length;
@@ -104,6 +112,43 @@ export function StepReview(props: Props) {
           </label>
         </div>
       </Card>
+
+      {service.basis === "art2_1" && (
+        <Card title="Судебные приставы (ФССП)" icon={<Gavel className="size-5" />}>
+          <label className="flex cursor-pointer items-center justify-between gap-4 rounded-2xl bg-background px-4 py-3">
+            <span className="text-[15px]">Сформировать также заявление для судебных приставов (ФССП)</span>
+            <Switch
+              checked={fssp.enabled}
+              onCheckedChange={(v) => setFssp({ ...fssp, enabled: v })}
+              aria-label="Сформировать также заявление для судебных приставов (ФССП)"
+            />
+          </label>
+          {fssp.enabled && (
+            <div className="mt-4 grid grid-cols-[minmax(0,1fr)] gap-4 sm:grid-cols-2">
+              <Field
+                className="sm:col-span-2"
+                label="Наименование отдела ФССП (РОСП/ОСП)"
+                placeholder="Центральный РОСП г. Тулы УФССП России по Тульской области"
+                value={fssp.department}
+                onChange={(v) => setFssp({ ...fssp, department: v })}
+              />
+              <Field
+                className="sm:col-span-2"
+                label="Адрес отдела ФССП"
+                value={fssp.address}
+                onChange={(v) => setFssp({ ...fssp, address: v })}
+              />
+              <Field label="ФИО пристава (необязательно)" value={fssp.bailiff} onChange={(v) => setFssp({ ...fssp, bailiff: v })} />
+              <Field
+                label="Номера исполнительных производств (через запятую)"
+                placeholder="12345/24/71001-ИП, 67890/25/71001-ИП"
+                value={fssp.cases}
+                onChange={(v) => setFssp({ ...fssp, cases: v })}
+              />
+            </div>
+          )}
+        </Card>
+      )}
 
       <Card
         title="Кредиторы"
@@ -220,6 +265,13 @@ function ContractEditor({ contract: c, onChange, onRemove }: { contract: Contrac
             </SelectContent>
           </Select>
         </label>
+        <Field
+          className="sm:col-span-2"
+          label="Реквизиты судебного акта / постановления ФССП (если есть)"
+          placeholder="Судебный приказ № 2-123/2024 от 01.03.2024, мировой судья судебного участка № 5"
+          value={c.courtAct}
+          onChange={(v) => onChange({ courtAct: v })}
+        />
       </div>
       <div className="mt-4 flex justify-end">
         <Button variant="ghost" size="sm" className="rounded-full text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={onRemove}>

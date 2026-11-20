@@ -1,17 +1,17 @@
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Copy, Download, FileArchive, FileText, Heart, Loader2, Mail, RotateCcw } from "lucide-react";
+import { Copy, Download, FileArchive, FileText, Gavel, Heart, Loader2, Mail, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DonateDialog } from "@/components/site/DonateDialog";
-import { buildStatement, emailBody, emailSubject, fileNameFor } from "@/lib/statement";
+import { buildFsspStatement, buildStatement, emailBody, emailSubject, fileNameFor, FSSP_FILE_NAME, type Statement } from "@/lib/statement";
 import { downloadBlob, statementToDocx, zipBlobs } from "@/lib/docx-builder";
-import { BASIS_LABELS, type Contract, type Person, type Service } from "@/lib/types";
+import { BASIS_LABELS, type Contract, type Fssp, type Person, type Service } from "@/lib/types";
 import { contractMeta } from "./ContractSummary";
 
-type Props = { person: Person; service: Service; contracts: Contract[]; onBack: () => void; onRestart: () => void };
+type Props = { person: Person; service: Service; fssp?: Fssp; contracts: Contract[]; onBack: () => void; onRestart: () => void };
 
-export function StepDocuments({ person, service, contracts, onBack, onRestart }: Props) {
+export function StepDocuments({ person, service, fssp, contracts, onBack, onRestart }: Props) {
   const [zipping, setZipping] = useState(false);
   // Обязательное подтверждение: без него файлы не скачиваются и письма не готовятся.
   const [confirmed, setConfirmed] = useState(false);
@@ -20,6 +20,22 @@ export function StepDocuments({ person, service, contracts, onBack, onRestart }:
     () => contracts.map((c, i) => ({ c, file: fileNameFor(c, i), statement: buildStatement(person, service, c) })),
     [person, service, contracts],
   );
+  // Заявление в ФССП — только для ст. 2.1 и при включенном переключателе на шаге 2.
+  const fsspStatement = useMemo<Statement | null>(
+    () => (fssp?.enabled && service.basis === "art2_1" ? buildFsspStatement(person, service, fssp, contracts) : null),
+    [person, service, fssp, contracts],
+  );
+  const total = docs.length + (fsspStatement ? 1 : 0);
+
+  async function downloadFssp() {
+    if (!fsspStatement || locked) return;
+    try {
+      downloadBlob(await statementToDocx(fsspStatement), FSSP_FILE_NAME);
+    } catch (e) {
+      console.error(e);
+      toast.error("Не удалось сформировать файл");
+    }
+  }
 
   async function downloadOne(i: number) {
     const d = docs[i];
@@ -37,6 +53,7 @@ export function StepDocuments({ person, service, contracts, onBack, onRestart }:
     setZipping(true);
     try {
       const files = await Promise.all(docs.map(async (d) => ({ name: d.file, blob: await statementToDocx(d.statement) })));
+      if (fsspStatement) files.push({ name: FSSP_FILE_NAME, blob: await statementToDocx(fsspStatement) });
       downloadBlob(await zipBlobs(files), "Заявления_ФЗ-377.zip");
     } catch (e) {
       console.error(e);
@@ -72,7 +89,8 @@ export function StepDocuments({ person, service, contracts, onBack, onRestart }:
         </span>
         <h2 className="mt-6 text-3xl font-bold tracking-tight">Документы готовы</h2>
         <p className="mx-auto mt-2 max-w-md text-muted-foreground">
-          {docs.length} {plural(docs.length, ["заявление", "заявления", "заявлений"])} · {BASIS_LABELS[service.basis]}
+          {total} {plural(total, ["заявление", "заявления", "заявлений"])} · {BASIS_LABELS[service.basis]}
+          {fsspStatement && " · включая заявление в ФССП"}
         </p>
         <label
           htmlFor="confirm-data"
@@ -127,6 +145,25 @@ export function StepDocuments({ person, service, contracts, onBack, onRestart }:
             </div>
           </li>
         ))}
+        {fsspStatement && (
+          <li className="surface-card p-5 md:p-6">
+            <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-4">
+              <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-primary-soft text-primary">
+                <Gavel className="size-5" />
+              </span>
+              <div className="min-w-0">
+                <p className="truncate font-semibold">Заявление в ФССП</p>
+                <p className="text-sm text-muted-foreground">{fssp?.department.trim() || "Отдел судебных приставов не указан"}</p>
+                <p className="truncate text-sm text-muted-foreground">{FSSP_FILE_NAME}</p>
+              </div>
+            </div>
+            <div className="mt-4 grid gap-2">
+              <Button variant="tint" size="lg" className="w-full px-3" disabled={locked} onClick={downloadFssp}>
+                <Download /> Скачать .docx
+              </Button>
+            </div>
+          </li>
+        )}
       </ul>
 
       <div className="flex items-center justify-between gap-3 pt-2">

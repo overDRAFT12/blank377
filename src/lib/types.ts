@@ -12,6 +12,8 @@ export type Person = {
   address: string;
   phone: string;
   email: string;
+  /** Прежние паспортные данные (для проверки архива ФССП). */
+  previousPassport: string;
 };
 
 export type ContractStatus = "active" | "closed";
@@ -29,6 +31,8 @@ export type Contract = {
   amount: string;
   status: ContractStatus;
   selected: boolean;
+  /** Реквизиты судебного акта / постановления ФССП (необязательно). */
+  courtAct: string;
 };
 
 export type Basis = "art2_1" | "art1" | "art2";
@@ -53,7 +57,19 @@ export const emptyPerson = (): Person => ({
   address: "",
   phone: "",
   email: "",
+  previousPassport: "",
 });
+
+/** Данные для отдельного заявления в службу судебных приставов. */
+export type Fssp = {
+  enabled: boolean;
+  department: string;
+  address: string;
+  bailiff: string;
+  cases: string;
+};
+
+export const emptyFssp = (): Fssp => ({ enabled: true, department: "", address: "", bailiff: "", cases: "" });
 
 export const BASIS_LABELS: Record<Basis, string> = {
   art2_1: "Списание до 10 млн ₽ по ст. 2.1 ФЗ-377",

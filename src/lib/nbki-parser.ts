@@ -56,8 +56,44 @@ function titleCase(s: string) {
     .join("");
 }
 
-export function parsePerson(text: string): Person {
+const PREV_DOCS_RE = /Ранее\s+выданн\S*\s+(?:документ\S*|паспорт\S*)(?:[^\n]*)/i;
+const NEXT_SECTION_RE =
+  /\n\s*(?:СНИЛС|ИНН|Адрес|Телефон|Электронная почта|E-?mail|Договор|Сведения|Кредитн|Информационная часть|Основная часть|Сделки|Обязательств|Титульная|Запрос)/i;
+
+/** Отделить раздел «Ранее выданные документы», чтобы старый паспорт не перепутать с текущим. */
+export function splitPreviousDocs(text: string): { main: string; previous: string } {
+  const m = text.match(PREV_DOCS_RE);
+  if (!m || m.index === undefined) return { main: text, previous: "" };
+  const rest = text.slice(m.index + m[0].length);
+  const end = rest.search(NEXT_SECTION_RE);
+  const cut = end >= 0 ? end : Math.min(rest.length, 600);
+  return { main: `${text.slice(0, m.index)}\n${rest.slice(cut)}`, previous: rest.slice(0, cut) };
+}
+
+/** Прежние паспорта из раздела «Ранее выданные документы»: «серия 0000 № 000000, выдан …, ДД.ММ.ГГГГ». */
+export function parsePreviousPassport(section: string): string {
+  if (!section.trim()) return "";
+  const re = /(?<!\d)(\d{2}\s?\d{2})(?!\d)[^\d\n]{0,20}?(?<!\d)(\d{6})(?!\d)/g;
+  const hits = [...section.matchAll(re)];
+  const out: string[] = [];
+  hits.forEach((h, i) => {
+    const start = (h.index ?? 0) + h[0].length;
+    const chunk = section.slice(start, hits[i + 1]?.index ?? section.length);
+    const date = after(chunk, ["Дата выдачи"], DATE, 40) || (chunk.match(new RegExp(DATE))?.[0] ?? "");
+    const by = lineAfter(chunk, ["Кем выдан", "Орган,? выдавший документ", "Выдан"])
+      .replace(new RegExp(`\\s*${DATE}.*$`), "")
+      .replace(/^(?:Дата выдачи).*$/i, "");
+    const parts = [`серия ${(h[1] ?? "").replace(/\s/g, "")} № ${h[2] ?? ""}`];
+    if (by || date) parts.push(`выдан ${[by, date].filter(Boolean).join(" ")}`);
+    out.push(parts.join(", "));
+  });
+  return [...new Set(out)].join("; ");
+}
+
+export function parsePerson(source: string): Person {
+  const { main: text, previous } = splitPreviousDocs(source);
   const p = emptyPerson();
+  p.previousPassport = parsePreviousPassport(previous);
   p.fullName = parseName(text);
   p.birthDate = after(text, ["Дата рождения"], DATE, 40);
   p.birthPlace = lineAfter(text, ["Место рождения"]).replace(new RegExp(`^${DATE}\\s*`), "");
@@ -136,6 +172,7 @@ export function emptyContract(partial: Partial<Contract> = {}): Contract {
     amount: "",
     status: "active",
     selected: true,
+    courtAct: "",
     ...partial,
   };
 }

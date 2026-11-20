@@ -26,3 +26,15 @@ describe("Step 3: data confirmation is required before download", () => {
     expect(docx).toBeEnabled();
   });
 });
+
+describe("Step 3: FSSP statement card", () => {
+  const fssp = { enabled: true, department: "Центральный РОСП", address: "", bailiff: "", cases: "" };
+  it("shows the FSSP file when the switch is on for art. 2.1", () => {
+    render(<StepDocuments {...props} fssp={fssp} />);
+    expect(screen.getByText("Заявление в ФССП")).toBeInTheDocument();
+  });
+  it("hides it when the switch is off", () => {
+    render(<StepDocuments {...props} fssp={{ ...fssp, enabled: false }} />);
+    expect(screen.queryByText("Заявление в ФССП")).toBeNull();
+  });
+});

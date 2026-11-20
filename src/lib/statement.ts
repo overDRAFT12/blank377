@@ -1,4 +1,4 @@
-import type { Basis, Contract, Person, Service } from "./types";
+import type { Basis, Contract, Fssp, Person, Service } from "./types";
 
 /** Текст заявления — чистая функция, общий источник для .docx, письма и предпросмотра. */
 export type Statement = {
@@ -33,28 +33,36 @@ export function contractRef(c: Contract) {
   return parts.join(" ");
 }
 
-export function buildStatement(person: Person, service: Service, c: Contract, today = formatToday()): Statement {
-  const addressee = [
-    `Кому: ${v(c.creditorName)}`,
-    c.creditorInn || c.creditorOgrn
-      ? [c.creditorInn && `ИНН ${c.creditorInn}`, c.creditorOgrn && `ОГРН ${c.creditorOgrn}`].filter(Boolean).join(", ")
-      : "",
-    c.creditorAddress ? `Адрес: ${c.creditorAddress}` : "",
-    c.creditorEmail ? `E-mail: ${c.creditorEmail}` : "",
-  ].filter(Boolean);
+/** Реквизиты паспорта в одну строку: «серия … № …, выдан … …, код подразделения …». */
+function passportLine(person: Person) {
+  const issued = [v(person.passportIssuedBy), person.passportIssueDate.trim()].filter(Boolean).join(" ");
+  const code = person.passportCode ? `, код подразделения ${person.passportCode}` : "";
+  const prev = person.previousPassport.trim() ? ` (ранее выдавался паспорт ${person.previousPassport.trim()})` : "";
+  return `Паспорт: серия ${v(person.passportSeries, "____")} № ${v(person.passportNumber, "______")}, выдан ${issued}${code}${prev}`;
+}
 
-  const passport = `паспорт ${v(person.passportSeries, "____")} № ${v(person.passportNumber, "______")}, выдан ${v(person.passportIssuedBy)} ${v(person.passportIssueDate, "")}${person.passportCode ? `, код подразделения ${person.passportCode}` : ""}`.replace(/\s+,/g, ",");
-
-  const sender = [
+/** Шапка «От: …» — одинаковая для кредиторов и ФССП. */
+export function senderLines(person: Person) {
+  return [
     `От: ${v(person.fullName)}`,
-    `Дата рождения: ${v(person.birthDate)}${person.birthPlace ? `, место рождения: ${person.birthPlace}` : ""}`,
-    passport.charAt(0).toUpperCase() + passport.slice(1),
-    person.snils ? `СНИЛС: ${person.snils}` : "",
-    person.inn ? `ИНН: ${person.inn}` : "",
+    `Дата рождения: ${v(person.birthDate)}`,
+    passportLine(person),
     `Адрес регистрации: ${v(person.address)}`,
-    `Телефон: ${v(person.phone)}`,
-    person.email ? `E-mail: ${person.email}` : "",
-  ].filter(Boolean);
+    `Тел.: ${v(person.phone)}`,
+    `Email: ${v(person.email)}`,
+  ];
+}
+
+const LAW_2_1 = "ст. 2.1 Федерального закона от 07.10.2022 № 377-ФЗ (в редакции Федерального закона от 25.05.2026 № 156-ФЗ)";
+
+export function buildStatement(person: Person, service: Service, c: Contract, today = formatToday()): Statement {
+  const requisites = [c.creditorInn && `ИНН ${c.creditorInn}`, c.creditorOgrn && `ОГРН ${c.creditorOgrn}`].filter(Boolean).join(", ");
+  const addressee = [
+    `В ${v(c.creditorName)}${requisites ? `, ${requisites}` : ""}`,
+    `Адрес: ${v(c.creditorAddress)}`,
+  ];
+
+  const sender = senderLines(person);
 
   const amount = c.amount ? ` на сумму ${c.amount} руб.` : "";
   const contractLine = `Между мной, ${v(person.fullName)}, и ${v(c.creditorName)} заключен кредитный договор (договор займа) № ${v(c.number)} от ${v(c.date)}${c.uid ? ` (уникальный идентификатор договора ${c.uid})` : ""}${amount}.`;
@@ -64,23 +72,24 @@ export function buildStatement(person: Person, service: Service, c: Contract, to
   const byBasis: Record<Basis, Pick<Statement, "title" | "subtitle" | "paragraphs" | "requests" | "attachments">> = {
     art2_1: {
       title: "ЗАЯВЛЕНИЕ",
-      subtitle: "о прекращении обязательств по кредитному договору (договору займа) в соответствии со статьей 2.1 Федерального закона № 377-ФЗ",
+      subtitle: `о прекращении кредитных обязательств (обязательств по договору займа) на основании ${LAW_2_1}`,
       paragraphs: [
-        contractLine,
-        `${serviceLine} Срок контракта составляет не менее одного года.`,
-        "На дату заключения указанного контракта в отношении меня имелся вступивший в законную силу судебный акт о взыскании задолженности по данному договору, и (или) выдан исполнительный документ, и (или) возбуждено исполнительное производство.",
-        `В соответствии со статьей 2.1 ${LAW} обязательства лица, заключившего контракт о прохождении военной службы на срок не менее одного года, по кредитным договорам (договорам займа), общий размер которых не превышает 10 000 000 рублей, прекращаются при соблюдении условий, установленных указанной статьей.`,
+        `${v(service.contractDate)} мною заключен контракт о прохождении службы в войсках национальной гвардии Российской Федерации (контракт о прохождении военной службы) сроком от 1 (одного) года и более для выполнения задач в ходе специальной военной операции${service.unit ? ` (место службы: ${service.unit})` : ""}.`,
+        `Между мной, ${v(person.fullName)}, и ${v(c.creditorName)} заключен кредитный договор (договор займа) № ${v(c.number)} от ${v(c.date)}${c.uid ? `, уникальный идентификатор договора (УИД) ${c.uid}` : ""}${amount}.`,
+        `До 1 мая 2026 года в отношении меня вступил в законную силу судебный акт о взыскании задолженности по указанному договору и (или) возбуждено исполнительное производство${c.courtAct.trim() ? ` (${c.courtAct.trim()})` : ""}.`,
+        `В соответствии со ${LAW_2_1} обязательства лица, заключившего указанный контракт, по кредитному договору (договору займа) прекращаются в пределах 10 000 000 (десяти миллионов) рублей при соблюдении условий, установленных данной статьей. Все условия в отношении меня соблюдены.`,
       ],
       requests: [
-        `Прекратить мои обязательства по договору № ${v(c.number)} от ${v(c.date)} в соответствии со статьей 2.1 Федерального закона № 377-ФЗ.`,
-        "Направить в бюро кредитных историй сведения о прекращении обязательств по указанному договору.",
-        "Отозвать исполнительный документ и (или) уведомить службу судебных приставов о прекращении обязательств.",
-        reply,
+        `Признать мои обязательства по договору № ${v(c.number)} от ${v(c.date)}${c.uid ? ` (УИД ${c.uid})` : ""} прекращенными в полном объеме в пределах 10 000 000 (десяти миллионов) рублей.`,
+        "Прекратить взыскание задолженности по указанному договору и отозвать исполнительный документ из службы судебных приставов (иной организации, исполняющей требования).",
+        "Передать в АО «НБКИ» и иные бюро кредитных историй, в которые передаются сведения по договору, информацию о прекращении обязательств.",
+        `Направить справку об отсутствии задолженности по договору на адрес электронной почты заявителя: ${v(person.email)}.`,
       ],
       attachments: [
         "Копия паспорта.",
-        "Копия контракта о прохождении военной службы (справка воинской части / подразделения об участии в специальной военной операции).",
-        "Копия судебного акта, исполнительного документа или постановления о возбуждении исполнительного производства (при наличии).",
+        "Копия контракта о прохождении службы (военной службы).",
+        "Копия справки войсковой части (подразделения) войск национальной гвардии Российской Федерации об участии в специальной военной операции.",
+        "Копия постановления судебного пристава-исполнителя / судебного акта.",
       ],
     },
     art1: {
@@ -186,4 +195,61 @@ export function fileNameFor(c: Contract, index: number) {
     .slice(0, 60);
   const num = c.number ? `_${c.number.replace(/[\\/:*?<>|\s]+/g, "-")}` : "";
   return `${String(index + 1).padStart(2, "0")}_${base}${num}.docx`;
+}
+
+
+export const FSSP_FILE_NAME = "Заявление_в_ФССП.docx";
+
+/** Заявление в службу судебных приставов — одно на все выбранные договоры. */
+export function buildFsspStatement(person: Person, service: Service, fssp: Fssp, contracts: Contract[], today = formatToday()): Statement {
+  const addressee = [
+    `В ${v(fssp.department)}`,
+    `Адрес: ${v(fssp.address)}`,
+    fssp.bailiff.trim() ? `Судебному приставу-исполнителю ${fssp.bailiff.trim()}` : "",
+  ].filter(Boolean);
+
+  const cases = fssp.cases
+    .split(/[,;\n]+/)
+    .map((x) => x.trim())
+    .filter(Boolean);
+  const casesText = cases.length ? cases.map((n) => `№ ${n.replace(/^№\s*/, "")}`).join(", ") : "";
+  const debts = contracts.map((c) => {
+    const parts = [`${v(c.creditorName)} — договор № ${v(c.number)} от ${v(c.date)}`];
+    if (c.uid) parts.push(`УИД ${c.uid}`);
+    if (c.courtAct.trim()) parts.push(c.courtAct.trim());
+    return parts.join(", ");
+  });
+  const prev = person.previousPassport.trim();
+
+  const paragraphs = [
+    `${v(service.contractDate)} мною заключен контракт о прохождении службы в войсках национальной гвардии Российской Федерации (контракт о прохождении военной службы) сроком от 1 (одного) года и более для выполнения задач в ходе специальной военной операции${service.unit ? ` (место службы: ${service.unit})` : ""}.`,
+    casesText
+      ? `В отношении меня возбуждены исполнительные производства ${casesText} о взыскании задолженности по кредитным договорам (договорам займа).`
+      : "В отношении меня возбуждались исполнительные производства о взыскании задолженности по кредитным договорам (договорам займа).",
+    ...(debts.length ? [`Сведения о кредитных обязательствах: ${debts.join("; ")}.`] : []),
+    `В соответствии со ${LAW_2_1} обязательства по указанным договорам прекращаются, а исполнительные производства подлежат прекращению на основании п. 14 ч. 2 ст. 43 Федерального закона от 02.10.2007 № 229-ФЗ «Об исполнительном производстве».`,
+  ];
+
+  return {
+    addressee,
+    sender: senderLines(person),
+    title: "ЗАЯВЛЕНИЕ",
+    subtitle: "о проверке и прекращении исполнительных производств, снятии арестов и ограничений",
+    paragraphs,
+    requests: [
+      `Провести полную проверку по ФИО (${v(person.fullName)}) и дате рождения (${v(person.birthDate)}) всех активных, оконченных и архивных исполнительных производств в базе АИС ФССП России, включая производства, возбужденные по прежним паспортным данным${prev ? ` (${prev})` : ""}.`,
+      "Отменить ранее вынесенные постановления об окончании исполнительных производств по п. 7 ч. 1 ст. 47 и п. 4 ч. 1 ст. 46 Федерального закона № 229-ФЗ (при наличии).",
+      `Прекратить все указанные исполнительные производства${casesText ? ` (${casesText})` : ""}, а также выявленные в ходе проверки, и связанные с ними кредитные обязательства на основании п. 14 ч. 2 ст. 43 Федерального закона № 229-ФЗ и ст. 2.1 Федерального закона № 377-ФЗ (в ред. Федерального закона № 156-ФЗ от 25.05.2026).`,
+      "Снять все аресты, запреты и иные ограничения, наложенные в рамках указанных исполнительных производств.",
+      `Копии вынесенных постановлений направить по адресу регистрации и на адрес электронной почты: ${v(person.email)}.`,
+    ],
+    attachments: [
+      "Копия паспорта.",
+      "Копия контракта о прохождении службы (военной службы).",
+      "Копия справки войсковой части (подразделения) войск национальной гвардии Российской Федерации об участии в специальной военной операции.",
+      "Копии постановлений судебного пристава-исполнителя / судебных актов (при наличии).",
+    ],
+    date: today,
+    signature: `____________ / ${shortName(person.fullName)} /`,
+  };
 }

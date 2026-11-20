@@ -4,7 +4,7 @@ import { ArrowLeft, Check, Lock } from "lucide-react";
 import { StepUpload } from "@/components/wizard/StepUpload";
 import { StepReview } from "@/components/wizard/StepReview";
 import { StepDocuments } from "@/components/wizard/StepDocuments";
-import { emptyPerson, type Contract, type Person, type Service } from "@/lib/types";
+import { emptyFssp, emptyPerson, type Contract, type Fssp, type Person, type Service } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/sozdat")({
@@ -33,6 +33,7 @@ function Wizard() {
   const [person, setPerson] = useState<Person>(emptyPerson);
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [service, setService] = useState<Service>({ unit: "", contractDate: "", basis: "art2_1" });
+  const [fssp, setFssp] = useState<Fssp>(emptyFssp);
   const [showClosed, setShowClosed] = useState(false);
   const [parsed, setParsed] = useState(false);
 
@@ -118,6 +119,8 @@ function Wizard() {
             setPerson={setPerson}
             service={service}
             setService={setService}
+            fssp={fssp}
+            setFssp={setFssp}
             contracts={contracts}
             setContracts={setContracts}
             showClosed={showClosed}
@@ -130,11 +133,13 @@ function Wizard() {
           <StepDocuments
             person={person}
             service={service}
+            fssp={fssp}
             contracts={selected}
             onBack={() => go(1)}
             onRestart={() => {
               setPerson(emptyPerson());
               setContracts([]);
+              setFssp(emptyFssp());
               setParsed(false);
               setShowClosed(false);
               go(0);
