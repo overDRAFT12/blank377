@@ -84,7 +84,7 @@ describe("Statement text follows the chosen basis", () => {
 
   it("art. 2.1 asks to terminate obligations up to 10 mln", () => {
     const t = statementToText(buildStatement(person, { ...service, basis: "art2_1" }, c, "01.02.2026"));
-    expect(t).toContain("статьей 2.1");
+    expect(t).toContain("ст. 2.1");
     expect(t).toContain("10 000 000");
     expect(t).toContain("99887766");
   });
