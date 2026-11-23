@@ -2,10 +2,10 @@ import { describe, expect, it } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { DonateDialog } from "@/components/site/DonateDialog";
 import { Toaster } from "@/components/ui/sonner";
-import { SBP_NOTICE, SUPPORT_TELEGRAM } from "@/lib/site";
+import { FORUM_URL, SBP_NOTICE } from "@/lib/site";
 
 describe("Donate dialog: СБП is not a live payment link yet", () => {
-  it("shows the Telegram notice instead of sending the user to a payment page", async () => {
+  it("shows the forum notice instead of sending the user to a payment page", async () => {
     render(
       <>
         <Toaster position="top-center" />
@@ -19,11 +19,16 @@ describe("Donate dialog: СБП is not a live payment link yet", () => {
     const sbp = await screen.findByRole("button", { name: /Поддержать через СБП/ });
     expect(sbp.tagName).toBe("BUTTON");
 
+    // The only external link is the forum thread, opened in a new tab with safe rel attributes.
+    const links = [...document.querySelectorAll('a[href^="http"]')];
+    expect(links).toHaveLength(1);
+    expect(links[0]?.getAttribute("href")).toBe(FORUM_URL);
+    expect(links[0]?.getAttribute("target")).toBe("_blank");
+    expect(links[0]?.getAttribute("rel")).toContain("nofollow");
+
     fireEvent.click(sbp);
 
     expect(await screen.findByText(SBP_NOTICE, {}, { timeout: 4000 })).toBeInTheDocument();
-    expect(SBP_NOTICE).toContain(SUPPORT_TELEGRAM);
-    // Nothing may leave the page as a payment redirect while the СБП gateway is unconfigured.
-    expect(document.querySelectorAll('a[href^="http"]')).toHaveLength(0);
+    expect(SBP_NOTICE).toContain(FORUM_URL);
   });
 });

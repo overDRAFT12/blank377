@@ -12,7 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { SBP_NOTICE, SUPPORT_TELEGRAM, SUPPORT_TELEGRAM_URL } from "@/lib/site";
+import { FORUM_LABEL, FORUM_URL, FORUM_WARNING, SBP_NOTICE } from "@/lib/site";
 
 const AMOUNTS = [100, 300, 500, 1000];
 
@@ -33,8 +33,8 @@ export function DonateDialog({ children }: { children: ReactNode }) {
         description: "!text-muted-foreground !text-[14px] !leading-relaxed",
       },
       action: {
-        label: "Написать в Telegram",
-        onClick: () => window.open(SUPPORT_TELEGRAM_URL, "_blank", "noopener,noreferrer"),
+        label: "Открыть ветку форума",
+        onClick: () => window.open(FORUM_URL, "_blank", "noopener,noreferrer,nofollow"),
       },
     });
   };
@@ -79,13 +79,21 @@ export function DonateDialog({ children }: { children: ReactNode }) {
         <Button variant="pill" size="lg" className="w-full" onClick={showSbpNotice}>
           Поддержать через СБП{value ? ` ${value} ₽` : ""}
         </Button>
-        <p className="flex items-start gap-2 text-center text-xs leading-relaxed text-muted-foreground">
-          <Info className="mt-0.5 size-3.5 shrink-0" />
-          <span>
-            Мы не получаем и не храним ваши платежные данные. Если что-то не получается — поддержка в Telegram{" "}
-            <span className="select-all font-medium text-foreground">{SUPPORT_TELEGRAM}</span>.
-          </span>
-        </p>
+        <div className="space-y-2">
+          <p className="flex items-start gap-2 text-xs leading-relaxed text-muted-foreground">
+            <Info className="mt-0.5 size-3.5 shrink-0" />
+            <span>Мы не получаем и не храним ваши платежные данные.</span>
+          </p>
+          <a
+            href={FORUM_URL}
+            target="_blank"
+            rel="noopener noreferrer nofollow"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-[13px] font-medium text-foreground transition-colors hover:bg-secondary"
+          >
+            {FORUM_LABEL}
+          </a>
+          <p className="text-[11px] leading-relaxed text-muted-foreground">{FORUM_WARNING}</p>
+        </div>
       </DialogContent>
     </Dialog>
   );
