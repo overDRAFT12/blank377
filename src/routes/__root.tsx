@@ -13,6 +13,7 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { preloadOfflineTools } from "../lib/pdf-extract";
+import { prepareOfflineShell } from "../lib/offline";
 import { Navbar } from "@/components/site/Navbar";
 import { Footer } from "@/components/site/Footer";
 import { Toaster } from "@/components/ui/sonner";
@@ -101,12 +102,6 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         href: appCss,
       },
       { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
-      { rel: "preconnect", href: "https://fonts.googleapis.com" },
-      { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
-      {
-        rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap",
-      },
     ],
   }),
   shellComponent: RootShell,
@@ -135,13 +130,14 @@ function RootComponent() {
 
   // Local-first: preload the wizard and the PDF/Word/ZIP tools so the app keeps working offline.
   useEffect(() => {
-    const run = () => {
+    const run = async () => {
+      await prepareOfflineShell().catch(() => {});
       preloadOfflineTools();
       void router.preloadRoute({ to: "/sozdat" }).catch(() => {});
     };
     const w = window as Window & { requestIdleCallback?: (cb: () => void) => number };
-    if (w.requestIdleCallback) w.requestIdleCallback(run);
-    else setTimeout(run, 800);
+    if (w.requestIdleCallback) w.requestIdleCallback(() => void run());
+    else setTimeout(() => void run(), 800);
   }, [router]);
 
   return (

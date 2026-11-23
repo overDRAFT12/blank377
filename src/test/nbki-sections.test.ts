@@ -21,10 +21,10 @@ ${extra}
 const REPORT = `КРЕДИТНЫЙ ОТЧЕТ ДЛЯ СУБЪЕКТА
 Титульная часть
 Фамилия Имя Отчество Место рождения Гражданство
-КОЗЛОВ АНДРЕЙ ВИКТОРОВИЧ г. Курск РФ
+ИВАНОВ ИВАН ИВАНОВИЧ г. Курск РФ
 Дата рождения 07.07.1988
 Паспорт гражданина РФ
-Серия 3810 Номер 654321
+Серия 0000 Номер 000000
 Сводка по кредитной истории
 Всего договоров 6
 Действующих 3
@@ -63,9 +63,9 @@ describe("NBKI report: only the «Обязательства» section is read",
     expect(contracts.filter((c) => c.selected)).toHaveLength(3);
   });
   it("takes the name values, not the table headers", () => {
-    expect(person.fullName).toBe("Козлов Андрей Викторович");
-    expect(person.passportSeries).toBe("3810");
-    expect(person.passportNumber).toBe("654321");
+    expect(person.fullName).toBe("Иванов Иван Иванович");
+    expect(person.passportSeries).toBe("0000");
+    expect(person.passportNumber).toBe("000000");
   });
 });
 
@@ -89,12 +89,12 @@ describe("Status rules", () => {
 
 describe("Name parsing skips label words", () => {
   it("never returns «Имя Отчество Место»", () => {
-    const { person } = parseNbkiText("Фамилия Имя Отчество Место рождения\nСИДОРОВ ОЛЕГ ПЕТРОВИЧ г. Орел\nОбязательства\nУИд договора 12345678-1111-2222-3333-444455556666-1\nСтатус Активный");
-    expect(person.fullName).toBe("Сидоров Олег Петрович");
+    const { person } = parseNbkiText("Фамилия Имя Отчество Место рождения\nИВАНОВ ИВАН ИВАНОВИЧ г. Орел\nОбязательства\nУИд договора 12000000-1111-2222-3333-444455556666-1\nСтатус Активный");
+    expect(person.fullName).toBe("Иванов Иван Иванович");
   });
   it("reads separate labelled values", () => {
-    const { person } = parseNbkiText("Фамилия ПЕТРОВА\nИмя АННА\nОтчество ИГОРЕВНА\nМесто рождения г. Тула");
-    expect(person.fullName).toBe("Петрова Анна Игоревна");
+    const { person } = parseNbkiText("Фамилия ИВАНОВА\nИмя ИВАННА\nОтчество ИВАНОВНА\nМесто рождения г. Тула");
+    expect(person.fullName).toBe("Иванова Иванна Ивановна");
   });
 });
 
@@ -106,7 +106,7 @@ describe("Other fields skip table headers too", () => {
 Адрес регистрации Телефон
 305000, г. Курск, ул. Ленина, д. 5
 Обязательства
-УИд договора 12345678-1111-2222-3333-444455556666-1
+УИд договора 12000000-1111-2222-3333-444455556666-1
 Полное наименование источника ИНН ОГРН
 ПАО Сбербанк 7707083893 1027700132195
 Статус Активный`);

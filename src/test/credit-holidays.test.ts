@@ -3,10 +3,10 @@ import { buildStatement, buildFsspStatement, emailBody, emailSubject, statementT
 import { emptyContract } from "@/lib/nbki-parser";
 import { documentPerson, emptyFssp, emptyPerson, graceStartDate, type Agency, type Service } from "@/lib/types";
 
-const person = { ...emptyPerson(), fullName: "Иванов Иван Иванович", previousPassport: "серия 4500 № 333444" };
+const person = { ...emptyPerson(), fullName: "Иванов Иван Иванович", previousPassport: "серия 0002 № 000002" };
 const c = emptyContract({ creditorName: "ПАО Сбербанк", number: "77", date: "01.01.2020" });
-const service: Service = { basis: "art1", contractDate: "01.05.2026", unit: "в/ч 12345" };
-const auto: Service = { ...service, basis: "art1_auto", vehicleModel: "Lada Vesta", vehicleVin: "XTA12345678901234", pledgeContract: "№ P-77 от 01.01.2020" };
+const service: Service = { basis: "art1", contractDate: "01.05.2026", unit: "ВНГ РФ" };
+const auto: Service = { ...service, basis: "art1_auto", vehicleModel: "Lada Vesta", vehicleVin: "XTA12000000901234", pledgeContract: "№ P-77 от 01.01.2020" };
 
 describe("Credit holiday statement rules", () => {
   it("defaults the start date to the contract date", () => expect(graceStartDate(service)).toBe("01.05.2026"));
@@ -26,7 +26,7 @@ describe("Credit holiday statement rules", () => {
   it("requests an amended payment schedule within ten days", () => expect(statementToText(buildStatement(person, service, c))).toContain("в течение 10 дней"));
   it("identifies the pledged car and separate pledge contract", () => {
     const t = statementToText(buildStatement(person, auto, c));
-    expect(t).toContain("Lada Vesta"); expect(t).toContain("XTA12345678901234"); expect(t).toContain("№ P-77 от 01.01.2020");
+    expect(t).toContain("Lada Vesta"); expect(t).toContain("XTA12000000901234"); expect(t).toContain("№ P-77 от 01.01.2020");
   });
   it("preserves the pledge and prohibits car repossession during the holiday", () => {
     const t = statementToText(buildStatement(person, auto, c));
@@ -34,7 +34,7 @@ describe("Credit holiday statement rules", () => {
   });
   it("does not include preserved vehicle fields when the unsecured variant is selected", () => {
     const t = statementToText(buildStatement(person, { ...auto, basis: "art1" }, c));
-    expect(t).not.toContain("Lada Vesta"); expect(t).not.toContain("XTA12345678901234");
+    expect(t).not.toContain("Lada Vesta"); expect(t).not.toContain("XTA12000000901234");
   });
   it("uses a holiday requirement for car-variant email and copy", () => {
     expect(emailSubject(person, auto, c)).toContain("Требование о льготном периоде");
@@ -68,13 +68,13 @@ describe("Agency-specific wording", () => {
 describe("Optional document data", () => {
   const disabled = { ...person, previousPassportEnabled: false };
   it("excludes previous passport from creditor documents when disabled without deleting entered data", () => {
-    expect(statementToText(buildStatement(disabled, service, c))).not.toContain("333444");
-    expect(disabled.previousPassport).toContain("333444");
+    expect(statementToText(buildStatement(disabled, service, c))).not.toContain("000002");
+    expect(disabled.previousPassport).toContain("000002");
     expect(documentPerson(disabled).previousPassport).toBe("");
   });
   it("excludes previous passport from FSSP archive searches when disabled", () => {
     const t = statementToText(buildFsspStatement(disabled, service, emptyFssp(), [c]));
-    expect(t).not.toContain("333444"); expect(t).not.toContain("по прежним паспортным");
+    expect(t).not.toContain("000002"); expect(t).not.toContain("по прежним паспортным");
   });
   it("suspends, rather than terminates, proceedings for holidays", () => {
     const s = buildFsspStatement(person, auto, emptyFssp(), [c]);

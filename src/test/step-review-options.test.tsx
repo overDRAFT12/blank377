@@ -6,7 +6,7 @@ import { emptyFssp, emptyPerson, type Service } from "@/lib/types";
 import { emptyContract } from "@/lib/nbki-parser";
 
 function Review({ basis = "art1" }: { basis?: Service["basis"] }) {
-  const [person, setPerson] = useState({ ...emptyPerson(), previousPassport: "серия 4500 № 333444" });
+  const [person, setPerson] = useState({ ...emptyPerson(), previousPassport: "серия 0002 № 000002" });
   const [service, setService] = useState<Service>({ basis, unit: "", contractDate: "01.05.2026" });
   const [fssp, setFssp] = useState({ ...emptyFssp(), department: "Центральный РОСП" });
   const [contracts, setContracts] = useState([emptyContract()]);
@@ -19,7 +19,7 @@ describe("Optional review blocks", () => {
     fireEvent.click(screen.getByRole("switch", { name: "Прежние паспортные данные для архива ФССП" }));
     expect(screen.queryByLabelText("Прежние паспортные данные")).toBeNull();
     fireEvent.click(screen.getByRole("switch", { name: "Прежние паспортные данные для архива ФССП" }));
-    expect(screen.getByLabelText("Прежние паспортные данные")).toHaveValue("серия 4500 № 333444");
+    expect(screen.getByLabelText("Прежние паспортные данные")).toHaveValue("серия 0002 № 000002");
   });
   it("collapses FSSP for holidays and preserves the department value", () => {
     render(<Review />);

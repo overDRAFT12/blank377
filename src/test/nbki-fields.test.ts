@@ -6,14 +6,14 @@ describe("Supplemental NBKI fields without changing contract identity", () => {
   const report = `Субъект кредитной истории
 Фамилия ИВАНОВ
 Имя ИВАН
-Паспорт Серия 4515 Номер 999888
-Ранее выданные паспорта: Серия 4505 Номер 111222
+Паспорт Серия 0000 Номер 000000
+Ранее выданные паспорта: Серия 0001 Номер 000001
 Дата выдачи 01.02.2005
 Кем выдан ОВД Г. МОСКВЫ
 Паспорт Серия
-4500
+0002
 Номер
-333444
+000002
 Дата выдачи 01.01.2000
 Адрес регистрации г. Москва
 Обязательства
@@ -21,29 +21,29 @@ describe("Supplemental NBKI fields without changing contract identity", () => {
 Номер договора: NB-77
 Сумма обязательства:
 120 500,25 RUB
-УИД договора 12345678-1111-2222-3333-444455556666-1
+УИД договора 12000000-1111-2222-3333-444455556666-1
 Дата заключения 15.06.2021
-ИНН физического лица 123456789012
+ИНН физического лица 120000009012
 Источник формирования кредитной истории
 Полное наименование ООО МКК «Пример»
 ИНН ОГРН
-1234567890 1234567890123
+1200000090 1200000090123
 Запросы
-ИНН 9876543210 ОГРН 9876543210123`;
+ИНН 9870000000 ОГРН 9870000000123`;
   const parsed = parseNbkiText(report);
   it("reads the opening contract number before the UID", () => expect(parsed.contracts[0]?.number).toBe("NB-77"));
   it("reads the opening obligation amount before the UID", () => expect(parsed.contracts[0]?.amount).toBe("120 500,25"));
-  it("takes the creditor's ten-digit INN from the source section", () => expect(parsed.contracts[0]?.creditorInn).toBe("1234567890"));
-  it("takes the creditor's thirteen-digit OGRN from the source section", () => expect(parsed.contracts[0]?.creditorOgrn).toBe("1234567890123"));
+  it("takes the creditor's ten-digit INN from the source section", () => expect(parsed.contracts[0]?.creditorInn).toBe("1200000090"));
+  it("takes the creditor's thirteen-digit OGRN from the source section", () => expect(parsed.contracts[0]?.creditorOgrn).toBe("1200000090123"));
   it("preserves the current passport and reads inline previous passports", () => {
-    expect(parsed.person.passportNumber).toBe("999888");
-    expect(parsed.person.previousPassport).toContain("серия 4505 № 111222");
+    expect(parsed.person.passportNumber).toBe("000000");
+    expect(parsed.person.previousPassport).toContain("серия 0001 № 000001");
   });
-  it("reads another previous passport whose series and number are on separate lines", () => expect(parsed.person.previousPassport).toContain("серия 4500 № 333444"));
+  it("reads another previous passport whose series and number are on separate lines", () => expect(parsed.person.previousPassport).toContain("серия 0002 № 000002"));
   it("retains the original contract date and UID and ignores queries", () => {
     expect(parsed.contracts).toHaveLength(1);
     expect(parsed.contracts[0]?.date).toBe("15.06.2021");
-    expect(parsed.contracts[0]?.uid).toBe("12345678-1111-2222-3333-444455556666-1");
+    expect(parsed.contracts[0]?.uid).toBe("12000000-1111-2222-3333-444455556666-1");
   });
   it("does not take values from a later field when opening fields are empty", () => {
     const fields = obligationFields("Номер договора\nДата договора 01.01.2020\nСумма обязательства\nДата исполнения 02.01.2020", "");
@@ -53,17 +53,17 @@ describe("Supplemental NBKI fields without changing contract identity", () => {
   it("does not copy the preceding contract's number or amount", () => {
     const { contracts } = parseNbkiText(`Обязательства
 Полное наименование источника ООО МКК «Пример»
-УИД 12345678-1111-2222-3333-444455556666-1
+УИД 12000000-1111-2222-3333-444455556666-1
 Номер договора FIRST
 Дата заключения 01.01.2020
 Сумма обязательства 1000
-ИНН 1234567890
+ИНН 1200000090
 Полное наименование источника ООО МКК «Пример»
-УИД 12345678-1111-2222-3333-444455556666-2
+УИД 12000000-1111-2222-3333-444455556666-2
 Номер договора SECOND
 Дата заключения 02.01.2020
 Сумма обязательства 2000
-ИНН 1234567890`);
+ИНН 1200000090`);
     expect(contracts.map((c) => c.number)).toEqual(["FIRST", "SECOND"]);
     expect(contracts.map((c) => c.amount)).toEqual(["1000", "2000"]);
   });
@@ -71,11 +71,11 @@ describe("Supplemental NBKI fields without changing contract identity", () => {
     const { contracts } = parseNbkiText(`Обязательства
 Номер договора END-77
 Сумма обязательства 5000,00 RUB
-УИД 12345678-1111-2222-3333-444455556666-1
+УИД 12000000-1111-2222-3333-444455556666-1
 Дата заключения 01.01.2020
 Источник формирования кредитной истории
 Полное наименование источника ООО МКК «Пример»
-ИНН 1234567890 ОГРН 1234567890123`);
+ИНН 1200000090 ОГРН 1200000090123`);
     expect(contracts[0]?.number).toBe("END-77");
     expect(contracts[0]?.amount).toBe("5000,00");
   });

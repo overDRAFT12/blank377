@@ -38,3 +38,6 @@ use the editor.
 - Keep the existing holiday basis key for unsecured loans and a separate secured-vehicle key; all document and email paths use the same basis predicate, to prevent divergent outputs.
 - Optional document fields remain in tab memory when disabled and are excluded by statement builders, so toggling does not lose edits or leak disabled data into downloads.
 - Additional creditor references carry public source URLs and remain bundled offline; never fetch creditors at runtime, to keep personal report data on-device.
+- Cache only same-origin public page shells and static assets with the offline worker; never cache API requests or submitted data, so offline reloads preserve privacy.
+- Bundle font files locally to retain the design without mandatory external CDN requests.
+- Omit unfilled optional contract and enforcement identifiers in the shared statement builder rather than inserting placeholders; required identity fields retain printable blanks.

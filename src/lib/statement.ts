@@ -18,6 +18,18 @@ const LAW = "Федерального закона от 07.10.2022 № 377-ФЗ 
 
 const v = (s: string, fallback = "________") => (s && s.trim() ? s.trim() : fallback);
 
+/** Normalize absent optional values at the document boundary, not in the PDF parser. */
+function documentFields<T extends object>(fields: T): T {
+  return Object.fromEntries(Object.entries(fields).map(([key, value]) => [key,
+    value == null || (typeof value === "number" && !Number.isFinite(value)) ? "" : typeof value === "string"
+      ? (/^(?:undefined|null|NaN)$/i.test(value.trim()) ? "" : value.trim()) : value,
+  ])) as T;
+}
+
+function contractDetails(c: Contract) {
+  return `${c.number ? ` № ${c.number}` : ""}${c.date ? ` от ${c.date}` : ""}`;
+}
+
 export function formatToday(d = new Date()) {
   return d.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric" });
 }
@@ -29,7 +41,8 @@ function shortName(full: string) {
 }
 
 export function contractRef(c: Contract) {
-  const parts = [`договор № ${v(c.number)}`, `от ${v(c.date)}`];
+  c = documentFields(c);
+  const parts = [`договор${contractDetails(c)}`];
   if (c.uid) parts.push(`УИд ${c.uid}`);
   return parts.join(" ");
 }
@@ -49,8 +62,8 @@ export function senderLines(person: Person) {
     `Дата рождения: ${v(person.birthDate)}`,
     passportLine(person),
     `Адрес регистрации: ${v(person.address)}`,
-    `Тел.: ${v(person.phone)}`,
-    `Email: ${v(person.email)}`,
+    ...(person.phone ? [`Тел.: ${person.phone}`] : []),
+    ...(person.email ? [`Email: ${person.email}`] : []),
   ];
 }
 
@@ -73,7 +86,7 @@ function holidayTemplate(service: Service, c: Contract, contractLine: string, se
       "Льготный период определяется как срок службы по контракту / участия в специальной военной операции, увеличенный на 180 дней, в зависимости от категории заемщика, предусмотренной частью 2 статьи 1 Федерального закона № 377-ФЗ.",
     ],
     requests: [
-      `Предоставить льготный период по договору № ${v(c.number)} от ${v(c.date)} с ${v(graceStartDate(service))} на срок службы по контракту / участия в специальной военной операции, увеличенный на 180 дней, в соответствии с частью 2 статьи 1 Федерального закона № 377-ФЗ.`,
+      `Предоставить льготный период по договору${contractDetails(c)} с ${v(graceStartDate(service))} на срок службы по контракту / участия в специальной военной операции, увеличенный на 180 дней, в соответствии с частью 2 статьи 1 Федерального закона № 377-ФЗ.`,
       "Прекратить начисление неустойки (штрафов, пеней) за неисполнение или ненадлежащее исполнение обязательств в течение льготного периода (ч. 20 ст. 1 Федерального закона № 377-ФЗ, ч. 14 ст. 6 Федерального закона № 106-ФЗ).",
       "По окончании льготного периода прекратить обязательства по уплате процентов, начисленных за льготный период: такие проценты уплате не подлежат в соответствии с ч. 18.1 ст. 1 Федерального закона № 377-ФЗ (для военнослужащих, не для членов их семей; за исключением ипотеки).",
       ...(auto ? [`Сохранить действие договора залога транспортного средства: ${v(service.vehicleModel ?? "")}, VIN / госномер ${v(service.vehicleVin ?? "")}${service.pledgeContract?.trim() ? `, реквизиты договора залога: ${service.pledgeContract.trim()}` : ""}, на прежних условиях с продлением срока действия залога на срок измененного кредитного договора (ч. 33 ст. 6 Федерального закона № 106-ФЗ). Не обращать взыскание на предмет залога и не изымать автомобиль в течение льготного периода (ч. 20 ст. 1 Федерального закона № 377-ФЗ, ч. 14 ст. 6 Федерального закона № 106-ФЗ).`] : []),
@@ -85,6 +98,9 @@ function holidayTemplate(service: Service, c: Contract, contractLine: string, se
 }
 
 export function buildStatement(person: Person, service: Service, c: Contract, today = formatToday()): Statement {
+  person = documentFields(person);
+  service = documentFields(service);
+  c = documentFields(c);
   const requisites = [c.creditorInn && `ИНН ${c.creditorInn}`, c.creditorOgrn && `ОГРН ${c.creditorOgrn}`].filter(Boolean).join(", ");
   const addressee = [
     `В ${v(c.creditorName)}${requisites ? `, ${requisites}` : ""}`,
@@ -94,7 +110,7 @@ export function buildStatement(person: Person, service: Service, c: Contract, to
   const sender = senderLines(person);
 
   const amount = c.amount ? ` на сумму ${c.amount} руб.` : "";
-  const contractLine = `Между мной и ${v(c.creditorName)} заключен кредитный договор (договор займа) № ${v(c.number)} от ${v(c.date)}${c.uid ? ` (уникальный идентификатор договора ${c.uid})` : ""}${amount}.`;
+  const contractLine = `Между мной и ${v(c.creditorName)} заключен кредитный договор (договор займа)${contractDetails(c)}${c.uid ? ` (уникальный идентификатор договора ${c.uid})` : ""}${amount}.`;
   const serviceLine = `${v(service.contractDate)} ${agencyPhrase(service)}${service.unit ? `, место службы: ${service.unit}` : ""}.`;
   const reply = `Ответ прошу направить по адресу: ${v(person.address)}${person.email ? `, а также на адрес электронной почты ${person.email}` : ""}.`;
 
@@ -104,15 +120,15 @@ export function buildStatement(person: Person, service: Service, c: Contract, to
       subtitle: `о прекращении кредитных обязательств (обязательств по договору займа) на основании ${LAW_2_1}`,
       paragraphs: [
         `${v(service.contractDate)} ${agencyPhrase(service)} сроком от 1 (одного) года и более для выполнения задач в ходе специальной военной операции${service.unit ? ` (место службы: ${service.unit})` : ""}.`,
-        `Между мной и ${v(c.creditorName)} заключен кредитный договор (договор займа) № ${v(c.number)} от ${v(c.date)}${c.uid ? `, уникальный идентификатор договора (УИД) ${c.uid}` : ""}${amount}.`,
-        `До 1 мая 2026 года в отношении меня вступил в законную силу судебный акт о взыскании задолженности по указанному договору и (или) возбуждено исполнительное производство${c.courtAct.trim() ? ` (${c.courtAct.trim()})` : ""}.`,
+        `Между мной и ${v(c.creditorName)} заключен кредитный договор (договор займа)${contractDetails(c)}${c.uid ? `, уникальный идентификатор договора (УИД) ${c.uid}` : ""}${amount}.`,
+        `До 1 мая 2026 года в отношении меня вступил в законную силу судебный акт о взыскании задолженности по указанному договору и (или) возбуждено исполнительное производство${c.courtAct ? ` (${c.courtAct})` : ""}.`,
         `В соответствии со ${LAW_2_1} обязательства лица, заключившего указанный контракт, по кредитному договору (договору займа) прекращаются в пределах 10 000 000 (десяти миллионов) рублей при соблюдении условий, установленных данной статьей. Все условия в отношении меня соблюдены.`,
       ],
       requests: [
-        `Признать мои обязательства по договору № ${v(c.number)} от ${v(c.date)}${c.uid ? ` (УИД ${c.uid})` : ""} прекращенными в полном объеме в пределах 10 000 000 (десяти миллионов) рублей.`,
+        `Признать мои обязательства по договору${contractDetails(c)}${c.uid ? ` (УИД ${c.uid})` : ""} прекращенными в полном объеме в пределах 10 000 000 (десяти миллионов) рублей.`,
         "Прекратить взыскание задолженности по указанному договору и отозвать исполнительный документ из службы судебных приставов (иной организации, исполняющей требования).",
         "Передать в АО «НБКИ» и иные бюро кредитных историй, в которые передаются сведения по договору, информацию о прекращении обязательств.",
-        `Направить справку об отсутствии задолженности по договору на адрес электронной почты заявителя: ${v(person.email)}.`,
+        person.email ? `Направить справку об отсутствии задолженности по договору на адрес электронной почты заявителя: ${person.email}.` : "Направить справку об отсутствии задолженности по договору по адресу регистрации заявителя.",
       ],
       attachments: [
         "Копия паспорта.",
@@ -133,7 +149,7 @@ export function buildStatement(person: Person, service: Service, c: Contract, to
         `В соответствии со статьей 2 ${LAW} обязательства заемщика по кредитному договору (договору займа), в том числе обеспеченному ипотекой, прекращаются в случае гибели (смерти) заемщика либо установления ему инвалидности I группы вследствие увечья, полученного при участии в специальной военной операции.`,
       ],
       requests: [
-        `Прекратить мои обязательства по договору № ${v(c.number)} от ${v(c.date)} в полном объеме в соответствии со статьей 2 Федерального закона № 377-ФЗ.`,
+        `Прекратить мои обязательства по договору${contractDetails(c)} в полном объеме в соответствии со статьей 2 Федерального закона № 377-ФЗ.`,
         "Направить в бюро кредитных историй сведения о прекращении обязательств по указанному договору.",
         "Прекратить залог (ипотеку) по договору, если он установлен, и выдать документы, необходимые для погашения регистрационной записи.",
         reply,
@@ -215,6 +231,10 @@ export const FSSP_FILE_NAME = "Заявление_в_ФССП.docx";
 
 /** Заявление в службу судебных приставов — одно на все выбранные договоры. */
 export function buildFsspStatement(person: Person, service: Service, fssp: Fssp, contracts: Contract[], today = formatToday()): Statement {
+  person = documentFields(person);
+  service = documentFields(service);
+  fssp = documentFields(fssp);
+  contracts = contracts.map(documentFields);
   const addressee = [
     `В ${v(fssp.department)}`,
     `Адрес: ${v(fssp.address)}`,
@@ -227,7 +247,7 @@ export function buildFsspStatement(person: Person, service: Service, fssp: Fssp,
     .filter(Boolean);
   const casesText = cases.length ? cases.map((n) => `№ ${n.replace(/^№\s*/, "")}`).join(", ") : "";
   const debts = contracts.map((c) => {
-    const parts = [`${v(c.creditorName)} — договор № ${v(c.number)} от ${v(c.date)}`];
+    const parts = [`${v(c.creditorName)} — договор${contractDetails(c)}`];
     if (c.uid) parts.push(`УИД ${c.uid}`);
     if (c.courtAct.trim()) parts.push(c.courtAct.trim());
     return parts.join(", ");
@@ -255,13 +275,13 @@ export function buildFsspStatement(person: Person, service: Service, fssp: Fssp,
     subtitle: holiday ? "о проверке и приостановлении исполнительных производств на льготный период" : "о проверке и прекращении исполнительных производств, снятии арестов и ограничений",
     paragraphs,
     requests: [
-      `Провести полную проверку по ФИО (${v(person.fullName)}), дате рождения (${v(person.birthDate)}) и действующему паспорту (серия ${v(person.passportSeries)} № ${v(person.passportNumber)}) всех активных, оконченных и архивных исполнительных производств в базе АИС ФССП России${person.previousPassportEnabled !== false ? `, включая производства, возбужденные по прежним паспортным данным${prev ? ` (${prev})` : ""}` : ""}.`,
+      `Провести полную проверку по ФИО (${v(person.fullName)}), дате рождения (${v(person.birthDate)}) и действующему паспорту (серия ${v(person.passportSeries)} № ${v(person.passportNumber)}) всех активных, оконченных и архивных исполнительных производств в базе АИС ФССП России${prev ? `, включая производства, возбужденные по прежним паспортным данным (${prev})` : ""}.`,
       "Отменить ранее вынесенные постановления об окончании исполнительных производств по п. 7 ч. 1 ст. 47 и п. 4 ч. 1 ст. 46 Федерального закона № 229-ФЗ (при наличии).",
       holiday
         ? `Приостановить указанные исполнительные производства${casesText ? ` (${casesText})` : ""} в части взыскания кредитной задолженности на льготный период по ст. 1 Федерального закона № 377-ФЗ и ст. 40 Федерального закона № 229-ФЗ, с учетом предусмотренных законом исключений.`
         : `Прекратить все указанные исполнительные производства${casesText ? ` (${casesText})` : ""}, а также выявленные в ходе проверки, на основании ${service.basis === "art2" ? "ст. 43 Федерального закона № 229-ФЗ и ст. 2 Федерального закона № 377-ФЗ" : "п. 14 ч. 2 ст. 43 Федерального закона № 229-ФЗ и ст. 2.1 Федерального закона № 377-ФЗ (в ред. Федерального закона № 156-ФЗ от 25.05.2026)"}.`,
       holiday ? `Не совершать исполнительные действия и не применять меры принудительного исполнения по приостановленным требованиям${service.basis === "art1_auto" ? "; не обращать взыскание на заложенный автомобиль в течение льготного периода (ч. 20 ст. 1 Федерального закона № 377-ФЗ, ч. 14 ст. 6 Федерального закона № 106-ФЗ)" : ""}.` : "Снять все аресты, запреты и иные ограничения, наложенные в рамках указанных исполнительных производств.",
-      `Копии вынесенных постановлений направить по адресу регистрации и на адрес электронной почты: ${v(person.email)}.`,
+      `Копии вынесенных постановлений направить по адресу регистрации${person.email ? ` и на адрес электронной почты: ${person.email}` : ""}.`,
     ],
     attachments: [
       "Копия паспорта.",
