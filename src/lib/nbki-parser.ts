@@ -193,30 +193,42 @@ export function parsePerson(report: string): Person {
   return p;
 }
 
-const CLOSE_DATE_RE = new RegExp(
-  String.raw`(?:Дата\s+фактическ\S*\s+(?:прекращения|исполнения|закрытия|погашения)|Фактическ\S*\s+дата\s+(?:прекращения|исполнения|закрытия|погашения)|Дата\s+(?:закрытия|прекращения)(?:\s+(?:счета|договора|обязательства|сделки))?)[^\n\d]{0,60}?[:\s]*(${DATE})`,
-  "i",
-);
+const CLOSE_DATE_LABEL_RE = /(?:Дата\s+фактическ\S*\s+(?:прекращения|исполнения|закрытия|погашения)|Фактическ\S*\s+дата\s+(?:прекращения|исполнения|закрытия|погашения)|Дата\s+(?:закрытия|прекращения))(?:[ \t]+(?:сч[её]та|договора|обязательств\S*|сделки))?/i;
 const CLOSED_WORDS_RE =
-  /(сч[её]т\s+закрыт|договор\s+прекращ|обязательств\S*\s+(?:исполнен|прекращ)|передан\S*\s+на\s+обслуживание(?!\s*[:\-–]?\s*(?:нет|—|-|\n))|уступк\S*\s+прав\S*(?:\s+требовани\S*)?(?!\s*[:\-–]?\s*(?:нет|—|-|\n))|цесси[яи](?!\s*[:\-–]?\s*(?:нет|—|-))|закрыт|погашен|прекращ|исполнен|продан|списан|аннулир)/i;
-const ACTIVE_WORDS_RE = /(действующ|активн|просроч)/i;
-const STATUS_LINE_RE = /(?:Статус|Состояние)(?:\s+(?:договора|сделки|сч[её]та|обязательства|счёта))?\s*[:\-–]?[ \t]*([^\n]*)(?:\n([^\n]*))?/gi;
+  /(?:сч[её]т\s+закрыт|договор\s+прекращ|обязательств\S*\s+(?:исполнен|прекращ)|уступк\S*\s+прав|цесси[яи]|закрыт|погашен|прекращ[её]н|исполнен|передан|продан|списан|аннулир)/i;
+const STATUS_LINE_RE = /(?:Статус|Состояние)(?:[ \t]+(?:договора|сделки|сч[её]та|обязательства))?[ \t]*[:\-–]?[ \t]*([^\n]*)(?:\n([^\n]*))?/gi;
+const EMPTY_VALUE_RE = /^(?:[-—–]|нет|не\s+заполнено)(?:\s|$)/i;
+
+function realDate(value: string): boolean {
+  const m = value.match(new RegExp(`^(${DATE})(?!\\d)`));
+  if (!m) return false;
+  const [day = 0, month = 0, year = 0] = (m[1] ?? "").split(".").map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return year >= 1000 && date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
+}
 
 /**
- * «Действующий» — только при явном статусе «Действующий / Активный / Просрочен»,
- * без даты фактического прекращения и без признаков закрытия, исполнения или уступки (цессии).
+ * Договор из раздела обязательств действующий по умолчанию.
+ * Исключения: явный закрывающий статус или реальная дата фактического закрытия.
  */
 export function detectStatus(block: string): ContractStatus {
   const statusValues = [...block.matchAll(STATUS_LINE_RE)].map((m) => clean(m[1] ?? "") || clean(m[2] ?? ""));
-  if (statusValues.some((v) => CLOSED_WORDS_RE.test(v))) return "closed";
-  for (const line of block.split("\n")) {
+  if (statusValues.some((v) => !startsWithLabel(v) && !EMPTY_VALUE_RE.test(v) && !/^не\s/i.test(v) && CLOSED_WORDS_RE.test(v))) return "closed";
+  const lines = block.split("\n");
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i] ?? "";
     // «Плановая дата закрытия» — это срок по графику, а не факт прекращения.
-    if (CLOSE_DATE_RE.test(line) && !/план/i.test(line)) return "closed";
+    const label = line.match(CLOSE_DATE_LABEL_RE);
+    if (!label || /план/i.test(line)) continue;
+    const inline = line.slice((label.index ?? 0) + label[0].length).replace(/^[ \t]*:[ \t]*/, "").trim();
+    // Прочерк/«Нет» не позволяет захватить дату из другого поля на следующей строке.
+    const value = inline || (lines[i + 1] ?? "").trim();
+    if (!EMPTY_VALUE_RE.test(value) && realDate(value)) return "closed";
   }
   if (/сч[её]т\s+закрыт|договор\s+прекращ[её]н|обязательств[оа]\s+исполнен/i.test(block)) return "closed";
   if (/(?:передан\S*\s+на\s+обслуживание|уступк\S*\s+прав\S*(?:\s+требовани\S*)?|цесси[яи])\s*[:\-–]?\s*(?:да|произведен|осуществлен|передан)/i.test(block)) return "closed";
   if (/(?:^|\n)\s*(?:передан\s+на\s+обслуживание|уступка\s+прав(?:\s+требования)?\s*\(цессия\))\s*$/im.test(block)) return "closed";
-  return statusValues.some((v) => ACTIVE_WORDS_RE.test(v)) ? "active" : "closed";
+  return "active";
 }
 
 function findCreditorName(block: string): string {
@@ -336,15 +348,27 @@ export function parseSummary(text: string): ReportSummary {
     const m = block.match(re);
     return m ? Number(m[1]) : null;
   };
-  let total = num(/Всего(?:\s+(?:договоров|сч[её]тов|кредитов|обязательств|займов))?\s*[:\-–]?\s*(\d{1,4})(?!\d|\.\d)/i);
+  let total = num(/Всего(?:\s+(?:заключено|открыто|кредитных))?(?:\s+(?:договор\S*|сч[её]т\S*|кредит\S*|обязательств\S*|займ\S*))?(?:[ \t]*\([^\n)]*\))?\s*[:\-–—]?\s*(\d{1,4})(?!\d|\.\d)/i)
+    ?? num(/(?:Общее\s+количество|Количество|Число)\s+(?:кредитных\s+)?(?:договор\S*|сч[её]т\S*|кредит\S*|обязательств\S*|займ\S*)\s*[:\-–—]?\s*(\d{1,4})(?!\d|\.\d)/i);
   let active = num(/(?:Действующ\S*|Активн\S*|Открыт\S*)(?:\s+(?:договор\S*|сч[её]т\S*|кредит\S*|обязательств\S*|займ\S*))?\s*[:\-–]?\s*(\d{1,4})(?!\d|\.\d)/i);
   if (total === null || active === null) {
     // Табличная сводка: строка заголовков «Всего Действующих Закрытых», под ней — числа по порядку.
     const lines = block.split("\n");
     for (let i = 0; i < lines.length - 1; i++) {
-      const head = lines[i] ?? "";
+      let head = lines[i] ?? "";
+      let next = i + 1;
+      // PDF может разнести заголовки колонок и их значения на отдельные строки.
+      while (!/\d/.test(head) && next < Math.min(lines.length, i + 8) && /^(?:Действующ|Активн|Открыт|Закрыт|Просроч|Негатив)/i.test(clean(lines[next] ?? ""))) {
+        head += ` ${lines[next] ?? ""}`;
+        next++;
+      }
       if (/Всего/i.test(head) && /(Действующ|Активн|Открыт)/i.test(head) && !/\d/.test(head)) {
-        const nums = (lines[i + 1] ?? "").match(/\d+/g) ?? [];
+        const values: string[] = [];
+        while (next < Math.min(lines.length, i + 12) && /^\s*\d+(?:\s+\d+)*\s*$/.test(lines[next] ?? "")) {
+          values.push(lines[next] ?? "");
+          next++;
+        }
+        const nums = values.join(" ").match(/\d+/g) ?? [];
         const cols = head.match(/Всего|Действующ\S*|Активн\S*|Открыт\S*|Закрыт\S*|Просроч\S*|Негатив\S*/gi) ?? [];
         cols.forEach((col, k) => {
           const n = nums[k] !== undefined ? Number(nums[k]) : null;

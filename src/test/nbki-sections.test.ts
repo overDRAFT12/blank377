@@ -56,7 +56,7 @@ describe("NBKI report: only the «Обязательства» section is read",
   it("reads the control numbers from the summary", () => {
     expect(summary).toEqual({ total: 6, active: 3 });
   });
-  it("marks as active only explicit active/overdue contracts without closing signs", () => {
+  it("keeps contracts active unless they have closing signs", () => {
     expect(contracts.filter((c) => c.status === "active").map((c) => c.number)).toEqual(["N-1", "N-2", "N-3"]);
   });
   it("preselects only active contracts", () => {
@@ -79,8 +79,8 @@ describe("Status rules", () => {
   it("cession closes the contract", () => {
     expect(detectStatus("Статус договора Уступка прав требования (цессия)")).toBe("closed");
   });
-  it("no explicit status means not active", () => {
-    expect(detectStatus("Номер договора 1\nСумма 1000")).toBe("closed");
+  it("no explicit status means active by default", () => {
+    expect(detectStatus("Номер договора 1\nСумма 1000")).toBe("active");
   });
   it("«Обязательство исполнено» closes the contract", () => {
     expect(detectStatus("Состояние Обязательство исполнено")).toBe("closed");
