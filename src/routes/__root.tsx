@@ -80,18 +80,11 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   head: () => ({
-    // Replace these placeholders with the app's name and description when first building the app.
-    // Each content route, / included, must still set its own head(). Never add og:image or
-    // twitter:image here: every page without its own would inherit the root's preview image.
+    // Page titles, descriptions and share images belong only to content routes.
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Бланк 377 — заявления на списание долгов по ФЗ-377" },
-      {
-        name: "description",
-        content:
-          "Бесплатная подготовка заявлений в банки и МФО по отчету НБКИ для военнослужащих и сотрудников Росгвардии. Данные не покидают браузер.",
-      },
+      { property: "og:site_name", content: "Бланк 377" },
       { name: "theme-color", content: "#F5F5F7" },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },

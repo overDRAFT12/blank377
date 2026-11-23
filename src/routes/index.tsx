@@ -24,19 +24,21 @@ import heroImage from "@/assets/hero-documents.jpg";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Бланк 377 — списание долгов по ФЗ-377 без бумажной рутины" },
+      { title: "Бланк 377 — заявления на списание долгов и кредитные каникулы" },
       {
         name: "description",
         content:
           "Заявления в банки и МФО для военнослужащих и сотрудников Росгвардии по отчету НБКИ. Бесплатно, без регистрации, обработка только в браузере.",
       },
-      { property: "og:title", content: "Бланк 377 — списание долгов без бумажной рутины" },
+      { property: "og:title", content: "Бланк 377 — заявления на списание долгов и кредитные каникулы" },
       {
         property: "og:description",
         content: "Автоматическая подготовка заявлений по ФЗ-377 по отчету НБКИ. Данные не покидают ваше устройство.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "Бланк 377 — заявления на списание долгов и кредитные каникулы" },
+      { name: "twitter:description", content: "Автоматическая подготовка заявлений по ФЗ-377 по отчету НБКИ. Данные не покидают ваше устройство." },
     ],
   }),
   component: Index,
