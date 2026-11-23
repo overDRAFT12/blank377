@@ -34,7 +34,7 @@ export async function statementToDocx(s: Statement): Promise<Blob> {
           new Paragraph({ children: [run("На основании изложенного ПРОШУ:", { bold: true })], indent: { firstLine: 709 }, spacing: { before: 120, after: 120 } }),
           ...s.requests.map((r, i) => body(`${i + 1}. ${r}`)),
           blank(),
-          new Paragraph({ children: [run("Приложения:", { bold: true })], spacing: { after: 60 } }),
+          ...(s.attachments.length ? [new Paragraph({ children: [run("Приложения:", { bold: true })], spacing: { after: 60 } })] : []),
           ...s.attachments.map((a, i) => new Paragraph({ children: [run(`${i + 1}. ${a}`)], spacing: { after: 60 } })),
           blank(),
           new Paragraph({ children: [run(`Дата: ${s.date}`)] }),

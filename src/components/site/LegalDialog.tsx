@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import type { LegalDoc } from "./legal-texts";
+import { SUPPORT_LABEL, SUPPORT_URL, SUPPORT_WARNING } from "@/lib/site";
 
 export function LegalDialog({ doc, label }: { doc: LegalDoc; label?: string }) {
   return (
@@ -17,6 +18,8 @@ export function LegalDialog({ doc, label }: { doc: LegalDoc; label?: string }) {
               {s.p.map((p) => <p key={p}>{p}</p>)}
             </section>
           ))}
+          <Button asChild variant="outline" className="h-auto whitespace-normal text-left"><a href={SUPPORT_URL} target="_blank" rel="noopener noreferrer">{SUPPORT_LABEL}</a></Button>
+          <p className="text-xs text-muted-foreground">{SUPPORT_WARNING}</p>
           <p className="text-xs text-muted-foreground">Редакция от 23.11.2026</p>
         </div>
       </DialogContent>

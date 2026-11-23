@@ -1,4 +1,4 @@
-import { FORUM_URL, PDN_OPERATOR_STATEMENT, REPO_URL, SITE_NAME } from "@/lib/site";
+import { SUPPORT_URL, PDN_OPERATOR_STATEMENT, REPO_URL, SITE_NAME } from "@/lib/site";
 
 /** Shared answers for the upload page and the privacy policy. */
 export const DATA_TRANSPARENCY = [
@@ -16,6 +16,6 @@ export const DATA_TRANSPARENCY = [
   },
   {
     h: "Кто отвечает за сервис и как связаться?",
-    p: [`Некоммерческий проект «${SITE_NAME}». Программный код, который выполняется в браузере, доступен для проверки: ${REPO_URL}. Связь и технические вопросы — в ветке проекта на независимом форуме ФинДозор: ${FORUM_URL}. Не публикуйте там отчеты, ФИО, паспортные данные и сведения о службе.`],
+    p: [`Некоммерческий проект «${SITE_NAME}». Программный код, который выполняется в браузере, доступен для проверки: ${REPO_URL}. Техподдержка в Telegram: @supp_blank377 — ${SUPPORT_URL}. В целях безопасности и соблюдения № 152-ФЗ не присылайте в Telegram паспорта, справки и отчеты НБКИ — принимаются только технические вопросы по работе сайта.`],
   },
 ];

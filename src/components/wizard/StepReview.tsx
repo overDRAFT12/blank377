@@ -3,6 +3,10 @@ import { Briefcase, Building2, ChevronDown, Gavel, Plus, ShieldAlert, Trash2, Us
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { CollectionChoices } from "./CollectionChoices";
+import { refusalEligibilityDate, refusalTiming } from "@/lib/collection";
+import type { CollectionOptions, DocumentCategory } from "@/lib/types";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CREDITORS, matchCreditor } from "@/lib/creditors";
 import { emptyContract } from "@/lib/nbki-parser";
@@ -25,6 +29,10 @@ type Props = {
   onBack: () => void;
   onNext: () => void;
   onClear?: () => void;
+  category?: DocumentCategory;
+  onCategory?: (value: DocumentCategory) => void;
+  collection?: CollectionOptions;
+  onCollection?: (value: CollectionOptions) => void;
 };
 
 const PERSON_FIELDS: { key: Exclude<keyof Person, "previousPassportEnabled">; label: string; placeholder?: string; wide?: boolean; mode?: "numeric" | "email" | "tel" }[] = [
@@ -48,6 +56,8 @@ export function StepReview(props: Props) {
   const [openId, setOpenId] = useState<string | null>(null);
   const visible = showClosed ? contracts : contracts.filter((c) => c.status === "active");
   const selectedCount = contracts.filter((c) => c.selected && (showClosed || c.status === "active")).length;
+  const civilian = props.category === "civilian";
+  const collection = props.collection ?? { thirdParties: true, debtor: false };
 
   const update = (id: string, patch: Partial<Contract>) =>
     setContracts(contracts.map((c) => (c.id === id ? { ...c, ...patch } : c)));
@@ -60,6 +70,15 @@ export function StepReview(props: Props) {
 
   return (
     <div className="space-y-5">
+      <Tabs value={props.category ?? "military"} onValueChange={(value) => {
+        if (value === "military" || value === "civilian") props.onCategory?.(value);
+      }}>
+        <TabsList aria-label="Категория заявлений" className="grid h-auto w-full grid-cols-1 gap-1 sm:grid-cols-2">
+          <TabsTrigger value="military" className="min-h-16 whitespace-normal px-4 py-3 text-left leading-relaxed">Военнослужащим и сотрудникам (№ 377-ФЗ)</TabsTrigger>
+          <TabsTrigger value="civilian" className="min-h-16 whitespace-normal px-4 py-3 text-left leading-relaxed">Физическим лицам: защита от звонков (№ 230-ФЗ)</TabsTrigger>
+        </TabsList>
+      </Tabs>
+      {civilian && <CollectionChoices value={collection} onChange={(value) => props.onCollection?.(value)} />}
       {props.onClear && <div className="flex justify-end">
         <Button variant="outline" className="text-destructive" onClick={() => {
           setOpenId(null);
@@ -68,7 +87,7 @@ export function StepReview(props: Props) {
       </div>}
       <Card title="Личные данные" icon={<User className="size-5" />}>
         <div className="grid grid-cols-[minmax(0,1fr)] gap-4 sm:grid-cols-2">
-          {PERSON_FIELDS.map((f) => (
+          {PERSON_FIELDS.filter((f) => !civilian || f.key !== "email").map((f) => (
             <Field
               key={f.key}
               label={f.label}
@@ -82,7 +101,7 @@ export function StepReview(props: Props) {
         </div>
       </Card>
 
-      <Card title="Прежние паспортные данные для архива ФССП" icon={<User className="size-5" />} action={
+      {!civilian && <><Card title="Прежние паспортные данные для архива ФССП" icon={<User className="size-5" />} action={
         <Switch checked={person.previousPassportEnabled !== false} onCheckedChange={(enabled) => setPerson({ ...person, previousPassportEnabled: enabled })} aria-label="Прежние паспортные данные для архива ФССП" />
       }>
         {person.previousPassportEnabled !== false && <Field label="Прежние паспортные данные" placeholder="серия 0000 № 000000, выдан …" value={person.previousPassport} onChange={(value) => setPerson({ ...person, previousPassport: value })} />}
@@ -180,7 +199,7 @@ export function StepReview(props: Props) {
               />
             </div>
           )}
-        </Card>
+        </Card></>}
 
       <Card
         title="Кредиторы"
@@ -226,7 +245,11 @@ export function StepReview(props: Props) {
                     <ChevronDown className={cn("size-5 transition-transform", open && "rotate-180")} />
                   </button>
                 </div>
-                {open && <ContractEditor contract={c} onChange={(p) => update(c.id, p)} onRemove={() => setContracts(contracts.filter((x) => x.id !== c.id))} />}
+                {civilian && collection.debtor && c.selected && <div className="border-t border-border p-4">
+                  <Field label="Дата возникновения просрочки" placeholder="ДД.ММ.ГГГГ" value={c.overdueDate ?? ""} onChange={(value) => update(c.id, { overdueDate: value })} />
+                  <OverdueNotice value={c.overdueDate ?? ""} />
+                </div>}
+                {open && <ContractEditor civilian={civilian} contract={c} onChange={(p) => update(c.id, p)} onRemove={() => setContracts(contracts.filter((x) => x.id !== c.id))} />}
               </li>
             );
           })}
@@ -237,7 +260,7 @@ export function StepReview(props: Props) {
         <Button variant="soft" size="lg" className="w-full sm:w-auto" onClick={props.onBack}>
           Назад
         </Button>
-        <Button variant="pill" size="lg" className="w-full sm:w-auto" disabled={selectedCount === 0} onClick={props.onNext}>
+        <Button variant="pill" size="lg" className="w-full sm:w-auto" disabled={selectedCount === 0 || (civilian && !collection.thirdParties && !collection.debtor)} onClick={props.onNext}>
           Сформировать документы{selectedCount ? ` (${selectedCount})` : ""}
         </Button>
       </div>
@@ -245,7 +268,16 @@ export function StepReview(props: Props) {
   );
 }
 
-function ContractEditor({ contract: c, onChange, onRemove }: { contract: Contract; onChange: (p: Partial<Contract>) => void; onRemove: () => void }) {
+function OverdueNotice({ value }: { value: string }) {
+  const timing = refusalTiming(value);
+  if (timing === "eligible") return null;
+  const date = refusalEligibilityDate(value)?.toLocaleDateString("ru-RU");
+  return <p role="status" className="mt-3 rounded-xl bg-warning p-3 text-sm leading-relaxed text-warning-foreground">{timing === "early"
+    ? `С даты просрочки еще не прошло 4 месяца. Есть риск недействительности заявления по ч. 6 ст. 8 № 230-ФЗ. Обращение возможно с ${date}. Скачивание доступно.`
+    : timing === "invalid" ? "Проверьте дату: нужен существующий день в формате ДД.ММ.ГГГГ. Скачивание доступно." : "Укажите дату просрочки, чтобы проверить срок 4 месяца. Скачивание доступно."}</p>;
+}
+
+function ContractEditor({ contract: c, civilian, onChange, onRemove }: { contract: Contract; civilian: boolean; onChange: (p: Partial<Contract>) => void; onRemove: () => void }) {
   const pick = (id: string) => {
     const ref = CREDITORS.find((r) => r.id === id);
     if (!ref) return;
@@ -309,13 +341,13 @@ function ContractEditor({ contract: c, onChange, onRemove }: { contract: Contrac
             </SelectContent>
           </Select>
         </label>
-        <Field
+        {!civilian && <Field
           className="sm:col-span-2"
           label="Реквизиты судебного акта / постановления ФССП (если есть)"
           placeholder="Судебный приказ № 2-123/2024 от 01.03.2024, мировой судья судебного участка № 5"
           value={c.courtAct}
           onChange={(v) => onChange({ courtAct: v })}
-        />
+        />}
       </div>
       <div className="mt-4 flex justify-end">
         <Button variant="ghost" size="sm" className="rounded-full text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={onRemove}>

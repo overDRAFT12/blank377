@@ -5,7 +5,7 @@ import { StepUpload } from "@/components/wizard/StepUpload";
 import { StepReview } from "@/components/wizard/StepReview";
 import { StepDocuments } from "@/components/wizard/StepDocuments";
 import type { ReportSummary } from "@/lib/nbki-parser";
-import { emptyFssp, emptyPerson, type Contract, type Fssp, type Person, type Service } from "@/lib/types";
+import { emptyCollectionOptions, emptyFssp, emptyPerson, type CollectionOptions, type DocumentCategory, type Contract, type Fssp, type Person, type Service } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { demoWizardData, emptyWizardData } from "@/lib/wizard-data";
 
@@ -42,12 +42,16 @@ function Wizard() {
   const [parsed, setParsed] = useState(false);
   const [summary, setSummary] = useState<ReportSummary | null>(null);
   const [demo, setDemo] = useState(false);
+  const [category, setCategory] = useState<DocumentCategory>("military");
+  const [collection, setCollection] = useState<CollectionOptions>(emptyCollectionOptions);
 
   const replaceData = (data: ReturnType<typeof emptyWizardData>) => {
     setPerson(data.person);
     setContracts(data.contracts);
     setService(data.service);
     setFssp(data.fssp);
+    setCategory(data.category);
+    setCollection(data.collection);
     setSummary(null);
     setParsed(false);
     setShowClosed(false);
@@ -109,7 +113,7 @@ function Wizard() {
       </h1>
       <p className="mt-2 text-muted-foreground">
         {step === 0 && "PDF читается прямо на вашем устройстве — файл никуда не отправляется."}
-        {step === 1 && "Поправьте то, что распознано неточно, и выберите основание по ФЗ-377."}
+        {step === 1 && "Поправьте то, что распознано неточно, и выберите категорию заявлений."}
         {step === 2 && "Скачайте заявления и отправьте их кредиторам."}
       </p>
 
@@ -142,6 +146,10 @@ function Wizard() {
         )}
         {step === 1 && (
           <StepReview
+            category={category}
+            onCategory={setCategory}
+            collection={collection}
+            onCollection={setCollection}
             person={person}
             setPerson={setPerson}
             service={service}
@@ -159,6 +167,8 @@ function Wizard() {
         )}
         {step === 2 && (
           <StepDocuments
+            category={category}
+            collection={collection}
             person={person}
             service={service}
             fssp={fssp}

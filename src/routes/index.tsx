@@ -15,6 +15,7 @@ import {
   Scale,
   HeartPulse,
   PauseCircle,
+  PhoneOff,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -191,6 +192,12 @@ function Index() {
             </article>
           ))}
         </div>
+        <article className="surface-card mt-5 p-8">
+          <div className="flex items-center gap-3"><PhoneOff className="size-6 shrink-0 text-primary" /><span className="text-sm font-medium text-primary">№ 230-ФЗ</span></div>
+          <h3 className="mt-6 text-xl font-semibold">Для всех граждан: защита от коллекторов (№ 230-ФЗ)</h3>
+          <p className="mt-3 leading-relaxed text-muted-foreground">Заявления по отчету НБКИ: отзыв согласия на звонки и сообщения родственникам, коллегам и знакомым, а также отказ от взаимодействия с самим должником после 4 месяцев просрочки. Данные о службе не нужны.</p>
+          <Button asChild variant="tint" className="mt-5"><Link to="/sozdat">Подготовить заявления <ArrowRight /></Link></Button>
+        </article>
         <div className="surface-card mx-auto mt-10 max-w-3xl px-6 py-2 md:px-8">
           <Accordion type="single" collapsible>
             {FAQ.map((f, i) => (

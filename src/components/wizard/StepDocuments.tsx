@@ -4,26 +4,30 @@ import { Copy, Download, FileArchive, FileText, Gavel, Heart, Loader2, Mail, Rot
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DonateDialog } from "@/components/site/DonateDialog";
-import { buildFsspStatement, buildStatement, emailBody, emailSubject, fileNameFor, FSSP_FILE_NAME, type Statement } from "@/lib/statement";
+import { buildCollectionStatement, buildFsspStatement, buildStatement, emailBody, emailSubject, fileNameFor, FSSP_FILE_NAME, type Statement } from "@/lib/statement";
+import { collectionKinds } from "@/lib/collection";
 import { downloadBlob, statementToDocx, zipBlobs } from "@/lib/docx-builder";
-import { BASIS_LABELS, type Contract, type Fssp, type Person, type Service } from "@/lib/types";
+import { BASIS_LABELS, type CollectionOptions, type DocumentCategory, type Contract, type Fssp, type Person, type Service } from "@/lib/types";
 import { contractMeta } from "./ContractSummary";
 
-type Props = { person: Person; service: Service; fssp?: Fssp; contracts: Contract[]; onBack: () => void; onRestart: () => void };
+type Props = { person: Person; service: Service; fssp?: Fssp; contracts: Contract[]; category?: DocumentCategory; collection?: CollectionOptions; onBack: () => void; onRestart: () => void };
 
-export function StepDocuments({ person, service, fssp, contracts, onBack, onRestart }: Props) {
+export function StepDocuments({ person, service, fssp, contracts, category = "military", collection, onBack, onRestart }: Props) {
   const [zipping, setZipping] = useState(false);
   // Обязательное подтверждение: без него файлы не скачиваются и письма не готовятся.
   const [confirmed, setConfirmed] = useState(false);
   const locked = !confirmed;
+  const civilian = category === "civilian";
   const docs = useMemo(
-    () => contracts.map((c, i) => ({ c, file: fileNameFor(c, i), statement: buildStatement(person, service, c) })),
-    [person, service, contracts],
+    () => civilian ? contracts.flatMap((c, i) => collectionKinds(collection ?? { thirdParties: true, debtor: false }).map((kind) => ({
+      c, kind, file: fileNameFor(c, i).replace(/\.docx$/, kind === "thirdParties" ? "_Отзыв_третьи_лица.docx" : "_ПРОЕКТ_Отказ_взаимодействие.docx"), statement: buildCollectionStatement(person, c, kind),
+    }))) : contracts.map((c, i) => ({ c, kind: "military", file: fileNameFor(c, i), statement: buildStatement(person, service, c) })),
+    [person, service, contracts, civilian, collection],
   );
   // Заявление в ФССП формируется для выбранного основания только при включенном переключателе.
   const fsspStatement = useMemo<Statement | null>(
-    () => (fssp?.enabled ? buildFsspStatement(person, service, fssp, contracts) : null),
-    [person, service, fssp, contracts],
+    () => (!civilian && fssp?.enabled ? buildFsspStatement(person, service, fssp, contracts) : null),
+    [person, service, fssp, contracts, civilian],
   );
   const total = docs.length + (fsspStatement ? 1 : 0);
 
@@ -49,12 +53,12 @@ export function StepDocuments({ person, service, fssp, contracts, onBack, onRest
   }
 
   async function downloadAll() {
-    if (locked) return;
+    if (locked || total === 0) return;
     setZipping(true);
     try {
       const files = await Promise.all(docs.map(async (d) => ({ name: d.file, blob: await statementToDocx(d.statement) })));
       if (fsspStatement) files.push({ name: FSSP_FILE_NAME, blob: await statementToDocx(fsspStatement) });
-      downloadBlob(await zipBlobs(files), "Заявления_ФЗ-377.zip");
+      downloadBlob(await zipBlobs(files), civilian ? "Заявления_230-ФЗ.zip" : "Заявления_ФЗ-377.zip");
     } catch (e) {
       console.error(e);
       toast.error("Не удалось собрать архив");
@@ -64,6 +68,7 @@ export function StepDocuments({ person, service, fssp, contracts, onBack, onRest
   }
 
   async function copyLetter(c: Contract) {
+    if (locked || civilian) return;
     const text = [
       `Кому: ${c.creditorEmail || "—"}`,
       `Тема: ${emailSubject(person, service, c)}`,
@@ -89,7 +94,7 @@ export function StepDocuments({ person, service, fssp, contracts, onBack, onRest
         </span>
         <h2 className="mt-6 text-3xl font-bold tracking-tight">Документы готовы</h2>
         <p className="mx-auto mt-2 max-w-md text-muted-foreground">
-          {total} {plural(total, ["заявление", "заявления", "заявлений"])} · {BASIS_LABELS[service.basis]}
+          {total} {plural(total, ["заявление", "заявления", "заявлений"])} · {civilian ? "Защита от звонков (№ 230-ФЗ)" : BASIS_LABELS[service.basis]}
           {fsspStatement && " · включая заявление в ФССП"}
         </p>
         <label
@@ -102,22 +107,28 @@ export function StepDocuments({ person, service, fssp, contracts, onBack, onRest
             <span className="text-destructive"> *</span>
           </span>
         </label>
-        <Button variant="hero" size="xl" className="mt-6 w-full sm:w-auto" onClick={downloadAll} disabled={zipping || locked}>
+        <Button variant="hero" size="xl" className="mt-6 w-full sm:w-auto" onClick={downloadAll} disabled={zipping || locked || total === 0}>
           {zipping ? <Loader2 className="animate-spin" /> : <FileArchive />} Скачать все заявления (ZIP)
         </Button>
         {locked && <p className="mt-3 text-xs text-muted-foreground">Отметьте подтверждение, чтобы скачать документы.</p>}
         <div className="mx-auto mt-4 max-w-md space-y-1.5 text-xs text-muted-foreground">
+          {civilian ? <>
+            <p>Распечатайте и подпишите каждое заявление. Сохраните копию и подтверждение вручения.</p>
+            <p className="text-sm leading-relaxed text-foreground"><strong>Внимание: заявления по № 230-ФЗ имеют юридическую силу только при отправке заказным письмом с уведомлением о вручении (Почтой России), через нотариуса либо при вручении под расписку в офисе кредитора (обычный email для этих заявлений не подходит)</strong> — ч. 1 ст. 8 № 230-ФЗ.</p>
+            {collection?.debtor && <p className="rounded-xl bg-warning p-3 text-warning-foreground">Вариант Б — проект, не проверенный на соответствие форме приказа ФССП России от 18.01.2024 № 6. Перед отправкой перенесите данные в официальный бланк и проверьте срок 4 месяца с даты просрочки.</p>}
+          </> : <>
           <p>Перед отправкой распечатайте и подпишите заявление или приложите скан с подписью к письму.</p>
           <p>
             Перед отправкой документов по электронной почте убедитесь, что в тексте заявления и приложенной справке
             отсутствуют сведения о дислокации и задачах подразделения.
           </p>
+          </>}
         </div>
       </section>
 
       <ul className="space-y-3">
         {docs.map((d, i) => (
-          <li key={d.c.id} className="surface-card p-5 md:p-6">
+          <li key={`${d.c.id}-${d.kind}`} className="surface-card p-5 md:p-6">
             <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-4">
               <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-primary-soft text-primary">
                 <FileText className="size-5" />
@@ -125,14 +136,16 @@ export function StepDocuments({ person, service, fssp, contracts, onBack, onRest
               <div className="min-w-0">
                 <p className="truncate font-semibold">{d.c.creditorName || "Кредитор не указан"}</p>
                 <p className="text-sm text-muted-foreground">{contractMeta(d.c) || "—"}</p>
-                {d.c.creditorEmail && <p className="truncate text-sm text-muted-foreground">{d.c.creditorEmail}</p>}
+                {civilian && <p className="mt-1 text-sm text-primary">{d.kind === "thirdParties" ? "Отзыв согласия: третьи лица" : "Проект: отказ от взаимодействия"}</p>}
+                {civilian && <p className="mt-1 break-words text-sm text-muted-foreground">{d.c.creditorAddress || "Адрес кредитора не указан"}</p>}
+                {!civilian && d.c.creditorEmail && <p className="truncate text-sm text-muted-foreground">{d.c.creditorEmail}</p>}
               </div>
             </div>
-            <div className="mt-4 grid gap-2 sm:grid-cols-3">
+            <div className={`mt-4 grid gap-2 ${civilian ? "" : "sm:grid-cols-3"}`}>
               <Button variant="tint" size="lg" className="w-full px-3" disabled={locked} onClick={() => downloadOne(i)}>
                 <Download /> Скачать .docx
               </Button>
-              {locked ? (
+              {!civilian && <>{locked ? (
                 <Button variant="soft" size="lg" className="w-full px-3" disabled>
                   <Mail /> Открыть в почте
                 </Button>
@@ -146,6 +159,7 @@ export function StepDocuments({ person, service, fssp, contracts, onBack, onRest
               <Button variant="soft" size="lg" className="w-full px-3" disabled={locked} onClick={() => copyLetter(d.c)}>
                 <Copy /> Скопировать письмо
               </Button>
+              </>}
             </div>
           </li>
         ))}

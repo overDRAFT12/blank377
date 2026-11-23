@@ -1,4 +1,4 @@
-import { emptyFssp, emptyPerson, type Contract, type Service } from "./types";
+import { emptyCollectionOptions, emptyFssp, emptyPerson, type Contract, type DocumentCategory, type Service } from "./types";
 
 export function emptyWizardData() {
   return {
@@ -6,6 +6,8 @@ export function emptyWizardData() {
     contracts: [] as Contract[],
     service: { unit: "", contractDate: "", basis: "art2_1", agency: "vng" } as Service,
     fssp: emptyFssp(),
+    category: "military" as DocumentCategory,
+    collection: emptyCollectionOptions(),
   };
 }
 

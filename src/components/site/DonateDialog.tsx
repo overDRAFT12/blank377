@@ -12,7 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { FORUM_LABEL, FORUM_URL, FORUM_WARNING, SBP_NOTICE } from "@/lib/site";
+import { SUPPORT_LABEL, SUPPORT_URL, SUPPORT_WARNING, SBP_NOTICE } from "@/lib/site";
 
 const AMOUNTS = [100, 300, 500, 1000];
 
@@ -33,8 +33,8 @@ export function DonateDialog({ children }: { children: ReactNode }) {
         description: "!text-muted-foreground !text-[14px] !leading-relaxed",
       },
       action: {
-        label: "Открыть ветку форума",
-        onClick: () => window.open(FORUM_URL, "_blank", "noopener,noreferrer,nofollow"),
+        label: "Открыть Telegram",
+        onClick: () => window.open(SUPPORT_URL, "_blank", "noopener,noreferrer"),
       },
     });
   };
@@ -49,7 +49,7 @@ export function DonateDialog({ children }: { children: ReactNode }) {
           </span>
           <DialogTitle className="text-2xl font-semibold">Поддержать проект</DialogTitle>
           <DialogDescription>
-            Сервис бесплатен для защитников и их семей. Пожертвование добровольное и безвозмездное.
+            Сервис бесплатен для всех пользователей. Пожертвование добровольное и безвозмездное.
           </DialogDescription>
         </DialogHeader>
         <div className="grid grid-cols-4 gap-2">
@@ -84,15 +84,16 @@ export function DonateDialog({ children }: { children: ReactNode }) {
             <Info className="mt-0.5 size-3.5 shrink-0" />
             <span>Мы не получаем и не храним ваши платежные данные.</span>
           </p>
+          <Button asChild variant="outline" className="h-auto w-full whitespace-normal py-2 text-[13px]">
           <a
-            href={FORUM_URL}
+            href={SUPPORT_URL}
             target="_blank"
-            rel="noopener noreferrer nofollow"
-            className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-[13px] font-medium text-foreground transition-colors hover:bg-secondary"
+            rel="noopener noreferrer"
           >
-            {FORUM_LABEL}
+            {SUPPORT_LABEL}
           </a>
-          <p className="text-[11px] leading-relaxed text-muted-foreground">{FORUM_WARNING}</p>
+          </Button>
+          <p className="text-[11px] leading-relaxed text-muted-foreground">{SUPPORT_WARNING}</p>
         </div>
       </DialogContent>
     </Dialog>

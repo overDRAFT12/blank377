@@ -34,7 +34,12 @@ export type Contract = {
   selected: boolean;
   /** Реквизиты судебного акта / постановления ФССП (необязательно). */
   courtAct: string;
+  overdueDate?: string;
 };
+
+export type DocumentCategory = "military" | "civilian";
+export type CollectionOptions = { thirdParties: boolean; debtor: boolean };
+export const emptyCollectionOptions = (): CollectionOptions => ({ thirdParties: true, debtor: false });
 
 export type Basis = "art2_1" | "art1" | "art1_auto" | "art2";
 export const isCreditHoliday = (basis: Basis) => basis === "art1" || basis === "art1_auto";

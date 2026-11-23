@@ -46,3 +46,6 @@ use the editor.
 - Omit unfilled optional contract and enforcement identifiers in the shared statement builder rather than inserting placeholders; required identity fields retain printable blanks.
 - Share transparency answers between the upload page and privacy dialog to keep privacy disclosures consistent.
 - Use fresh wizard-data factories for demo and full reset; reset personal, service, contract, FSSP and report state together to prevent stale data from surviving cleanup.
+- Keep category and collection choices in wizard tab memory; gate military/FSSP outputs and email actions by category, not merely by hidden UI, so civilian documents cannot leak service data.
+- Keep collection date eligibility in a pure calendar-month helper and collection statements in the shared statement module; this protects the NBKI parser and lets all download paths use the same rules.
+- Treat the debtor-refusal output as a visibly labeled draft until the official order's form is supplied and verified; never claim an unverified layout is the prescribed form.

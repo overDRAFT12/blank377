@@ -2,9 +2,10 @@ import { describe, expect, it } from "vitest";
 
 import { DATA_TRANSPARENCY } from "@/components/site/data-transparency";
 import { LEGAL_DOCS } from "@/components/site/legal-texts";
-import { FORUM_URL, PDN_OPERATOR_STATEMENT, REPO_URL } from "@/lib/site";
+import { SUPPORT_URL, PDN_OPERATOR_STATEMENT, REPO_URL } from "@/lib/site";
 
-const privacy = LEGAL_DOCS.find((doc) => doc.id === "privacy")!;
+const privacy = LEGAL_DOCS.find((doc) => doc.id === "privacy");
+if (!privacy) throw new Error("Privacy policy missing");
 const privacyText = privacy.sections
   .flatMap((section) => [section.h, ...section.p])
   .join("\n");
@@ -32,9 +33,9 @@ describe("Прямая формулировка политики конфиде�
     expect(privacyText).toContain("включение в реестр операторов");
   });
 
-  it("дает ссылку на исходный код и ветку форума", () => {
+  it("дает ссылку на исходный код и Telegram", () => {
     expect(privacyText).toContain(REPO_URL);
-    expect(privacyText).toContain(FORUM_URL);
+    expect(privacyText).toContain(SUPPORT_URL);
   });
 
   it("не содержит обтекаемых формулировок ни в политике, ни в разделе о данных", () => {

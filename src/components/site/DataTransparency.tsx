@@ -1,5 +1,6 @@
+import { Button } from "@/components/ui/button";
 import { ShieldCheck } from "lucide-react";
-import { FORUM_LABEL, FORUM_URL, FORUM_WARNING } from "@/lib/site";
+import { SUPPORT_LABEL, SUPPORT_URL, SUPPORT_WARNING } from "@/lib/site";
 import { DATA_TRANSPARENCY } from "./data-transparency";
 import { LEGAL_DOCS } from "./legal-texts";
 import { LegalDialog } from "./LegalDialog";
@@ -22,9 +23,9 @@ export function DataTransparency() {
       </div>
       <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-3">
         {privacy && <LegalDialog doc={privacy} label="Политика обработки персональных данных" />}
-        <a href={FORUM_URL} target="_blank" rel="noopener noreferrer nofollow" className="text-xs font-medium text-primary hover:underline">{FORUM_LABEL}</a>
+        <Button asChild variant="outline" className="h-auto whitespace-normal text-left text-xs"><a href={SUPPORT_URL} target="_blank" rel="noopener noreferrer">{SUPPORT_LABEL}</a></Button>
       </div>
-      <p className="mt-3 text-xs leading-relaxed text-muted-foreground">{FORUM_WARNING}</p>
+      <p className="mt-3 text-xs leading-relaxed text-muted-foreground">{SUPPORT_WARNING}</p>
     </section>
   );
 }
