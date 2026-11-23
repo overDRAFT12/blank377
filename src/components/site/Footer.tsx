@@ -1,5 +1,5 @@
 import { MessagesSquare } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { LegalDialog } from "./LegalDialog";
 import { FORUM_LABEL, FORUM_URL, FORUM_WARNING, SITE_NAME } from "@/lib/site";
 import { LEGAL_DOCS } from "./legal-texts";
 
@@ -16,29 +16,7 @@ export function Footer() {
         <div className="flex flex-col gap-3 pt-5 md:flex-row md:items-center md:justify-between">
           <span>© 2026 {SITE_NAME}. Некоммерческий информационный сервис</span>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-            {LEGAL_DOCS.map((doc) => (
-              <Dialog key={doc.id}>
-                <DialogTrigger className="text-foreground/70 transition-colors hover:text-foreground hover:underline">
-                  {doc.title}
-                </DialogTrigger>
-                <DialogContent className="max-w-2xl">
-                  <DialogHeader>
-                    <DialogTitle className="text-2xl font-semibold">{doc.title}</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-5 text-sm leading-relaxed text-foreground/85">
-                    {doc.sections.map((s) => (
-                      <section key={s.h} className="space-y-2">
-                        <h3 className="font-semibold text-foreground">{s.h}</h3>
-                        {s.p.map((p) => (
-                          <p key={p.slice(0, 32)}>{p}</p>
-                        ))}
-                      </section>
-                    ))}
-                    <p className="text-xs text-muted-foreground">Редакция от 19.11.2026</p>
-                  </div>
-                </DialogContent>
-              </Dialog>
-            ))}
+            {LEGAL_DOCS.map((doc) => <LegalDialog key={doc.id} doc={doc} />)}
           </div>
         </div>
         <div className="mt-5 max-w-xl">

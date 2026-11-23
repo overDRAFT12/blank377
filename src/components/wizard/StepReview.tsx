@@ -24,6 +24,7 @@ type Props = {
   onShowClosed: (v: boolean) => void;
   onBack: () => void;
   onNext: () => void;
+  onClear?: () => void;
 };
 
 const PERSON_FIELDS: { key: Exclude<keyof Person, "previousPassportEnabled">; label: string; placeholder?: string; wide?: boolean; mode?: "numeric" | "email" | "tel" }[] = [
@@ -59,6 +60,12 @@ export function StepReview(props: Props) {
 
   return (
     <div className="space-y-5">
+      {props.onClear && <div className="flex justify-end">
+        <Button variant="outline" className="text-destructive" onClick={() => {
+          setOpenId(null);
+          props.onClear?.();
+        }}><Trash2 /> Очистить все данные</Button>
+      </div>}
       <Card title="Личные данные" icon={<User className="size-5" />}>
         <div className="grid grid-cols-[minmax(0,1fr)] gap-4 sm:grid-cols-2">
           {PERSON_FIELDS.map((f) => (

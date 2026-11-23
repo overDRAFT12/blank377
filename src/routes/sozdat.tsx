@@ -7,6 +7,7 @@ import { StepDocuments } from "@/components/wizard/StepDocuments";
 import type { ReportSummary } from "@/lib/nbki-parser";
 import { emptyFssp, emptyPerson, type Contract, type Fssp, type Person, type Service } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { demoWizardData, emptyWizardData } from "@/lib/wizard-data";
 
 export const Route = createFileRoute("/sozdat")({
   head: () => ({
@@ -40,6 +41,18 @@ function Wizard() {
   const [showClosed, setShowClosed] = useState(false);
   const [parsed, setParsed] = useState(false);
   const [summary, setSummary] = useState<ReportSummary | null>(null);
+  const [demo, setDemo] = useState(false);
+
+  const replaceData = (data: ReturnType<typeof emptyWizardData>) => {
+    setPerson(data.person);
+    setContracts(data.contracts);
+    setService(data.service);
+    setFssp(data.fssp);
+    setSummary(null);
+    setParsed(false);
+    setShowClosed(false);
+    setDemo(false);
+  };
 
   const go = (n: number) => {
     setStep(n);
@@ -101,6 +114,7 @@ function Wizard() {
       </p>
 
       <div className="mt-8">
+        {demo && <p role="status" className="mb-5 rounded-2xl border border-border bg-secondary p-4 text-sm leading-relaxed text-muted-foreground">Демо: все персональные данные и кредиторы вымышлены. Документы с этими данными не предназначены для отправки.</p>}
         {step === 0 && (
           <StepUpload
             person={person}
@@ -110,6 +124,7 @@ function Wizard() {
             showClosed={showClosed}
             onShowClosed={setShowClosed}
             onParsed={(p, c, sum) => {
+              setDemo(false);
               setPerson(p);
               setContracts(c);
               setSummary(sum);
@@ -117,6 +132,11 @@ function Wizard() {
               setParsed(true);
             }}
             onManual={() => go(1)}
+            onDemo={() => {
+              replaceData(demoWizardData());
+              setDemo(true);
+              go(1);
+            }}
             onNext={() => go(1)}
           />
         )}
@@ -134,6 +154,7 @@ function Wizard() {
             onShowClosed={setShowClosed}
             onBack={() => go(0)}
             onNext={() => go(2)}
+            onClear={() => replaceData(emptyWizardData())}
           />
         )}
         {step === 2 && (
@@ -144,13 +165,7 @@ function Wizard() {
             contracts={selected}
             onBack={() => go(1)}
             onRestart={() => {
-              setPerson(emptyPerson());
-              setContracts([]);
-              setService({ unit: "", contractDate: "", basis: "art2_1", agency: "vng" });
-              setFssp(emptyFssp());
-              setSummary(null);
-              setParsed(false);
-              setShowClosed(false);
+              replaceData(emptyWizardData());
               go(0);
             }}
           />

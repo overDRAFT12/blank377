@@ -44,3 +44,5 @@ use the editor.
 - Cache only same-origin public page shells and static assets with the offline worker; never cache API requests or submitted data, so offline reloads preserve privacy.
 - Bundle font files locally to retain the design without mandatory external CDN requests.
 - Omit unfilled optional contract and enforcement identifiers in the shared statement builder rather than inserting placeholders; required identity fields retain printable blanks.
+- Share transparency answers between the upload page and privacy dialog to keep privacy disclosures consistent.
+- Use fresh wizard-data factories for demo and full reset; reset personal, service, contract, FSSP and report state together to prevent stale data from surviving cleanup.

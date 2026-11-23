@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
-import { ChevronDown, FileText, Loader2, PenLine, UploadCloud, CheckCircle2, AlertCircle } from "lucide-react";
+import { ChevronDown, FileText, Loader2, PenLine, UploadCloud, CheckCircle2, AlertCircle, FlaskConical } from "lucide-react";
+import { DataTransparency } from "@/components/site/DataTransparency";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
@@ -16,10 +17,11 @@ type Props = {
   onShowClosed: (v: boolean) => void;
   onParsed: (person: Person, contracts: Contract[], summary: ReportSummary) => void;
   onManual: () => void;
+  onDemo: () => void;
   onNext: () => void;
 };
 
-export function StepUpload({ person, contracts, parsed, summary, showClosed, onShowClosed, onParsed, onManual, onNext }: Props) {
+export function StepUpload({ person, contracts, parsed, summary, showClosed, onShowClosed, onParsed, onManual, onDemo, onNext }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [drag, setDrag] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -117,11 +119,16 @@ export function StepUpload({ person, contracts, parsed, summary, showClosed, onS
         </div>
       )}
 
-      <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
-        <Button variant="outline" size="lg" onClick={onManual}>
+      <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:justify-center">
+        <Button variant="outline" size="lg" className="h-auto min-h-12 whitespace-normal py-3" disabled={busy} onClick={onManual}>
           <PenLine /> Заполнить вручную без отчета
         </Button>
+        <Button variant="tint" size="lg" className="h-auto min-h-12 whitespace-normal py-3" disabled={busy} onClick={onDemo}>
+          <FlaskConical className="shrink-0" /> Проверить на вымышленном примере (Демо)
+        </Button>
       </div>
+
+      <DataTransparency />
 
       <details className="group surface-card">
         <summary className="flex cursor-pointer list-none items-center justify-between gap-4 p-6 font-semibold [&::-webkit-details-marker]:hidden">
