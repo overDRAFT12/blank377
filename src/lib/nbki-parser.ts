@@ -27,8 +27,11 @@ function lineAfter(text: string, labels: string[]): string {
     const re = new RegExp(`${label}\\s*[:\\-–]?\\s*([^\\n]*)(?:\\n([^\\n]*))?`, "i");
     const m = text.match(re);
     if (m) {
-      const v = clean(m[1] ?? "") || clean(m[2] ?? "");
-      if (v && v.length > 2) return v.replace(/^[:\-–\s]+/, "");
+      // Строка, начинающаяся с другой метки (заголовок таблицы), — не значение: смотрим следующую строку.
+      for (const raw of [m[1], m[2]]) {
+        const v = clean(raw ?? "").replace(/^[:\-–\s]+/, "");
+        if (v.length > 2 && !startsWithLabel(v)) return v;
+      }
     }
   }
   return "";
@@ -41,6 +44,11 @@ const LABEL_WORDS = new Set([
   "персональные", "данные", "выдан", "выдачи", "кем", "код", "подразделения", "снилс", "инн", "адрес",
   "предыдущие", "прежние", "ранее", "наименование", "тип", "значение", "мужской", "женский",
 ]);
+const FIELD_LABEL_WORDS = new Set(["огрн", "сумма", "статус", "состояние", "телефон", "электронная", "email", "e-mail", "уид", "уид", "плановая", "источник"]);
+function startsWithLabel(v: string) {
+  const w = (v.split(/\s+/)[0] ?? "").toLowerCase().replace(/[:.,]/g, "");
+  return LABEL_WORDS.has(w) || FIELD_LABEL_WORDS.has(w);
+}
 const isNameWord = (w: string) => /^[А-ЯЁ][А-ЯЁа-яё]+(?:-[А-ЯЁа-яё]+)?$/.test(w) && !LABEL_WORDS.has(w.toLowerCase());
 
 /** 2–3 слова подряд, похожих на ФИО, с начала строки (метки пропускаются). */

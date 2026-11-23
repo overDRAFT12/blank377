@@ -97,3 +97,24 @@ describe("Name parsing skips label words", () => {
     expect(person.fullName).toBe("Петрова Анна Игоревна");
   });
 });
+
+describe("Other fields skip table headers too", () => {
+  const { person, contracts } = parseNbkiText(`Фамилия ИВАНОВ
+Имя ИВАН
+Кем выдан Дата выдачи Код подразделения
+ОТДЕЛОМ УФМС РОССИИ ПО Г. КУРСКУ 01.01.2010 460-001
+Адрес регистрации Телефон
+305000, г. Курск, ул. Ленина, д. 5
+Обязательства
+УИд договора 12345678-1111-2222-3333-444455556666-1
+Полное наименование источника ИНН ОГРН
+ПАО Сбербанк 7707083893 1027700132195
+Статус Активный`);
+  it("issuer and address are values, not header words", () => {
+    expect(person.passportIssuedBy).toBe("ОТДЕЛОМ УФМС РОССИИ ПО Г. КУРСКУ");
+    expect(person.address).toBe("305000, г. Курск, ул. Ленина, д. 5");
+  });
+  it("creditor name is not «ИНН ОГРН»", () => {
+    expect(contracts[0]?.creditorName).not.toMatch(/^ИНН/);
+  });
+});
