@@ -1,6 +1,6 @@
 import { MessagesSquare } from "lucide-react";
 import { LegalDialog } from "./LegalDialog";
-import { FORUM_LABEL, FORUM_URL, FORUM_WARNING, SITE_NAME } from "@/lib/site";
+import { FORUM_LABEL, FORUM_URL, FORUM_WARNING, PDN_NOTE, REPO_URL, SITE_NAME } from "@/lib/site";
 import { LEGAL_DOCS } from "./legal-texts";
 
 export function Footer() {
@@ -12,6 +12,17 @@ export function Footer() {
           заполнения шаблонов. Администрация не оказывает юридических услуг, не гарантирует принятие решений банками,
           МФО или госорганами и не несет ответственности за последствия использования документов. Все данные
           обрабатываются локально в браузере пользователя.
+        </p>
+        <p className="pt-5 leading-relaxed">
+          {PDN_NOTE} Открытый исходный код:{" "}
+          <a
+            href={REPO_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="break-all text-primary underline-offset-4 hover:underline"
+          >
+            {REPO_URL}
+          </a>
         </p>
         <div className="flex flex-col gap-3 pt-5 md:flex-row md:items-center md:justify-between">
           <span>© 2026 {SITE_NAME}. Некоммерческий информационный сервис</span>

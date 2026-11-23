@@ -19,6 +19,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { DonateDialog } from "@/components/site/DonateDialog";
+import { PdnCard } from "@/components/site/PdnCard";
 import heroImage from "@/assets/hero-documents.jpg";
 
 export const Route = createFileRoute("/")({
@@ -155,6 +156,7 @@ function Index() {
               </article>
             ))}
           </div>
+          <PdnCard />
           <details className="group surface-card mt-5 p-0 open:shadow-float">
             <summary className="flex cursor-pointer list-none items-center gap-4 p-6 md:p-8 [&::-webkit-details-marker]:hidden">
               <span className="grid size-11 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground">
