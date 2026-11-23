@@ -34,18 +34,67 @@ function lineAfter(text: string, labels: string[]): string {
   return "";
 }
 
-function parseName(text: string): string {
-  const fio = lineAfter(text, ["ФИО", "Ф\\.И\\.О\\.", "Субъект кредитной истории"]);
-  if (/^[А-ЯЁ][а-яё-]+\s+[А-ЯЁ][а-яё-]+(\s+[А-ЯЁ][а-яё-]+)?/i.test(fio)) {
-    const m = fio.match(/^([А-ЯЁа-яё-]+\s+[А-ЯЁа-яё-]+(?:\s+[А-ЯЁа-яё-]+)?)/);
-    if (m) return titleCase(m[1] ?? "");
+/** Слова-заголовки таблицы с личными данными — это метки, а не ФИО. */
+const LABEL_WORDS = new Set([
+  "фамилия", "имя", "отчество", "место", "дата", "рождения", "гражданство", "пол", "фио", "субъект",
+  "кредитной", "истории", "паспорт", "серия", "номер", "документ", "гражданина", "рф", "россии", "сведения",
+  "персональные", "данные", "выдан", "выдачи", "кем", "код", "подразделения", "снилс", "инн", "адрес",
+  "предыдущие", "прежние", "ранее", "наименование", "тип", "значение", "мужской", "женский",
+]);
+const isNameWord = (w: string) => /^[А-ЯЁ][А-ЯЁа-яё]+(?:-[А-ЯЁа-яё]+)?$/.test(w) && !LABEL_WORDS.has(w.toLowerCase());
+
+/** 2–3 слова подряд, похожих на ФИО, с начала строки (метки пропускаются). */
+function nameFrom(line: string): string {
+  const words = clean(line).split(" ");
+  let i = 0;
+  while (i < words.length && LABEL_WORDS.has((words[i] ?? "").toLowerCase().replace(/[:.,]/g, ""))) i++;
+  const out: string[] = [];
+  for (; i < words.length && out.length < 3; i++) {
+    const w = (words[i] ?? "").replace(/[,;]$/, "");
+    if (!isNameWord(w)) break;
+    out.push(w);
   }
-  const last = after(text, ["Фамилия"], "[А-ЯЁ][А-ЯЁа-яё-]+", 20);
-  const first = after(text, ["(?<!Отчество\\s)Имя"], "[А-ЯЁ][А-ЯЁа-яё-]+", 20);
-  const middle = after(text, ["Отчество"], "[А-ЯЁ][А-ЯЁа-яё-]+", 20);
+  return out.length >= 2 ? titleCase(out.join(" ")) : "";
+}
+
+/** Одно слово-значение сразу после метки на той же строке. */
+function wordAfterLabel(text: string, label: string): string {
+  const re = new RegExp(`(?:^|\\n)\\s*${label}\\s*[:\\-–]?[ \\t]+([А-ЯЁ][А-ЯЁа-яё-]+)`, "gi");
+  for (const m of text.matchAll(re)) {
+    const w = m[1] ?? "";
+    if (isNameWord(w)) return w;
+  }
+  return "";
+}
+
+function parseName(text: string): string {
+  // 1) «ФИО: Иванов Иван Иванович» — на той же или следующей строке.
+  for (const m of text.matchAll(/(?:ФИО|Ф\.И\.О\.|Субъект кредитной истории)\s*[:\-–]?[ \t]*([^\n]*)(?:\n([^\n]*))?/gi)) {
+    const n = nameFrom(m[1] ?? "") || nameFrom(m[2] ?? "");
+    if (n) return n;
+  }
+  // 2) Отдельные метки «Фамилия ИВАНОВ», «Имя ИВАН», «Отчество ИВАНОВИЧ».
+  const last = wordAfterLabel(text, "Фамилия");
+  const first = wordAfterLabel(text, "Имя");
+  const middle = wordAfterLabel(text, "Отчество");
   if (last && first) return titleCase([last, first, middle].filter(Boolean).join(" "));
-  const upper = text.match(/\b([А-ЯЁ]{2,}(?:-[А-ЯЁ]{2,})?\s+[А-ЯЁ]{2,}\s+[А-ЯЁ]{2,}(?:ВИЧ|ВНА|ИЧ|ЫЧ|КЫЗЫ|ОГЛЫ))\b/);
-  return upper ? titleCase(upper[1] ?? "") : "";
+  // 3) Таблица: строка-заголовок «Фамилия Имя Отчество …», значения — в одной из следующих строк.
+  const lines = text.split("\n");
+  for (let i = 0; i < lines.length; i++) {
+    const l = lines[i] ?? "";
+    if (/Фамилия/i.test(l) && /Имя/i.test(l)) {
+      for (let j = i + 1; j <= i + 4 && j < lines.length; j++) {
+        const n = nameFrom(lines[j] ?? "");
+        if (n) return n;
+      }
+    }
+  }
+  // 4) ФИО прописными с отчеством.
+  for (const m of text.matchAll(/\b([А-ЯЁ]{2,}(?:-[А-ЯЁ]{2,})?\s+[А-ЯЁ]{2,}\s+[А-ЯЁ]{2,}(?:ВИЧ|ВНА|ИЧ|ЫЧ|КЫЗЫ|ОГЛЫ))\b/g)) {
+    const n = nameFrom(m[1] ?? "");
+    if (n) return n;
+  }
+  return "";
 }
 
 function titleCase(s: string) {
@@ -90,13 +139,17 @@ export function parsePreviousPassport(section: string): string {
   return [...new Set(out)].join("; ");
 }
 
-export function parsePerson(source: string): Person {
+export function parsePerson(report: string): Person {
+  // Личные данные ищем до раздела с обязательствами, чтобы не цеплять реквизиты кредиторов.
+  const head = report.slice(0, findObligationsStart(report) ?? report.length);
+  const source = head.replace(/\s/g, "").length > 100 ? head : report;
   const { main: text, previous } = splitPreviousDocs(source);
   const p = emptyPerson();
   p.previousPassport = parsePreviousPassport(previous);
   p.fullName = parseName(text);
   p.birthDate = after(text, ["Дата рождения"], DATE, 40);
-  p.birthPlace = lineAfter(text, ["Место рождения"]).replace(new RegExp(`^${DATE}\\s*`), "");
+  const place = lineAfter(text, ["Место рождения"]).replace(new RegExp(`^${DATE}\\s*`), "");
+  p.birthPlace = LABEL_WORDS.has((place.split(/\s+/)[0] ?? "").toLowerCase().replace(/[:.,]/g, "")) ? "" : place;
 
   const series = after(text, ["Серия(?: паспорта)?"], String.raw`\d{2}\s?\d{2}`, 20);
   const number = after(text, ["Номер(?: паспорта)?(?! договора)"], String.raw`\d{6}`, 20);
@@ -132,12 +185,30 @@ export function parsePerson(source: string): Person {
   return p;
 }
 
-function detectStatus(block: string): ContractStatus {
-  const statusLine = block.match(/(?:Статус(?: договора| сделки)?|Состояние)\s*[:\-]?\s*([^\n]{0,60})/i)?.[1] ?? "";
-  const src = statusLine || block;
-  if (/(закрыт|погашен|прекращ|исполнен|продан|списан|аннулир)/i.test(src)) return "closed";
-  if (/(активн|действующ|открыт|просроч)/i.test(src)) return "active";
-  return "active";
+const CLOSE_DATE_RE = new RegExp(
+  String.raw`(?:Дата\s+фактическ\S*\s+(?:прекращения|исполнения|закрытия|погашения)|Фактическ\S*\s+дата\s+(?:прекращения|исполнения|закрытия|погашения)|Дата\s+(?:закрытия|прекращения)(?:\s+(?:счета|договора|обязательства|сделки))?)[^\n\d]{0,60}?[:\s]*(${DATE})`,
+  "i",
+);
+const CLOSED_WORDS_RE =
+  /(сч[её]т\s+закрыт|договор\s+прекращ|обязательств\S*\s+(?:исполнен|прекращ)|передан\S*\s+на\s+обслуживание(?!\s*[:\-–]?\s*(?:нет|—|-|\n))|уступк\S*\s+прав\S*(?:\s+требовани\S*)?(?!\s*[:\-–]?\s*(?:нет|—|-|\n))|цесси[яи](?!\s*[:\-–]?\s*(?:нет|—|-))|закрыт|погашен|прекращ|исполнен|продан|списан|аннулир)/i;
+const ACTIVE_WORDS_RE = /(действующ|активн|просроч)/i;
+const STATUS_LINE_RE = /(?:Статус|Состояние)(?:\s+(?:договора|сделки|сч[её]та|обязательства|счёта))?\s*[:\-–]?[ \t]*([^\n]*)(?:\n([^\n]*))?/gi;
+
+/**
+ * «Действующий» — только при явном статусе «Действующий / Активный / Просрочен»,
+ * без даты фактического прекращения и без признаков закрытия, исполнения или уступки (цессии).
+ */
+export function detectStatus(block: string): ContractStatus {
+  const statusValues = [...block.matchAll(STATUS_LINE_RE)].map((m) => clean(m[1] ?? "") || clean(m[2] ?? ""));
+  if (statusValues.some((v) => CLOSED_WORDS_RE.test(v))) return "closed";
+  for (const line of block.split("\n")) {
+    // «Плановая дата закрытия» — это срок по графику, а не факт прекращения.
+    if (CLOSE_DATE_RE.test(line) && !/план/i.test(line)) return "closed";
+  }
+  if (/сч[её]т\s+закрыт|договор\s+прекращ[её]н|обязательств[оа]\s+исполнен/i.test(block)) return "closed";
+  if (/(?:передан\S*\s+на\s+обслуживание|уступк\S*\s+прав\S*(?:\s+требовани\S*)?|цесси[яи])\s*[:\-–]?\s*(?:да|произведен|осуществлен|передан)/i.test(block)) return "closed";
+  if (/(?:^|\n)\s*(?:передан\s+на\s+обслуживание|уступка\s+прав(?:\s+требования)?\s*\(цессия\))\s*$/im.test(block)) return "closed";
+  return statusValues.some((v) => ACTIVE_WORDS_RE.test(v)) ? "active" : "closed";
 }
 
 function findCreditorName(block: string): string {
@@ -210,24 +281,132 @@ function parseBlock(block: string, lookbehind: string, uid: string): Contract {
 const filled = (c: Contract) =>
   [c.creditorName, c.creditorInn, c.creditorOgrn, c.number, c.date, c.amount].filter(Boolean).length;
 
-export function parseContracts(text: string): Contract[] {
-  const hits = [...text.matchAll(UID_RE)];
-  const result = new Map<string, Contract>();
-  hits.forEach((h, i) => {
-    const start = h.index ?? 0;
-    const end = hits[i + 1]?.index ?? Math.min(text.length, start + 3000);
-    const prevEnd = i > 0 ? (hits[i - 1]?.index ?? 0) + h[0].length : 0;
-    const lookbehind = text.slice(Math.max(prevEnd, start - 500), start);
-    const c = parseBlock(text.slice(start + h[0].length, end), lookbehind, h[0]);
-    const prev = result.get(c.uid);
-    if (!prev) result.set(c.uid, c);
-    else if (filled(c) > filled(prev)) result.set(c.uid, { ...c, id: prev.id });
-  });
-  return [...result.values()].map((c) => ({ ...c, selected: c.status === "active" }));
+/** Заголовок начала раздела с договорами. */
+const OBLIGATIONS_HEAD_RE =
+  /(?:^|\n)[ \t]*(?:\d+\.?\s*)?(?:Сведения\s+об\s+обязательствах(?:\s+субъекта)?(?:\s+кредитной\s+истории)?|Обязательства(?:\s+субъекта)?|Кредитные\s+(?:договоры|обязательства)|Договоры|Сч[её]та)[ \t]*:?[ \t]*(?=\n|$)/gi;
+/** Разделы, где перечислены запросы/обращения, а не кредиты: здесь поиск договоров прекращается. */
+const STOP_HEAD_RE =
+  /(?:^|\n)[ \t]*(?:\d+\.?\s*)?(?:Обращения|Запросы|Информационная\s+часть|Сведения\s+о\s+запросах|Сведения\s+об\s+обращениях|История\s+запросов)[^\n\d]{0,60}(?=\n|$)/gi;
+const CONTRACT_MARK_RE = /(?:УИд|УИД|Уникальный\s+идентификатор|Номер\s+договора|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}-[0-9a-f])/i;
+
+function firstStopAfter(text: string, from: number): number {
+  STOP_HEAD_RE.lastIndex = from;
+  const m = STOP_HEAD_RE.exec(text);
+  STOP_HEAD_RE.lastIndex = 0;
+  return m ? m.index : text.length;
 }
 
-export type ParsedReport = { person: Person; contracts: Contract[] };
+/** Начало раздела «Обязательства» (первый заголовок, за которым действительно идут договоры). */
+export function findObligationsStart(text: string): number | null {
+  for (const m of text.matchAll(OBLIGATIONS_HEAD_RE)) {
+    const start = m.index ?? 0;
+    const end = firstStopAfter(text, start + m[0].length);
+    if (CONTRACT_MARK_RE.test(text.slice(start, end))) return start;
+  }
+  return null;
+}
+
+/** Текст строго между началом раздела обязательств и первым разделом «Обращения / Запросы / Информационная часть». */
+export function obligationsSection(text: string): string {
+  const start = findObligationsStart(text);
+  if (start !== null) return text.slice(start, firstStopAfter(text, start + 1));
+  // Заголовок не найден: берем текст от первого договора до первого раздела запросов после него.
+  const first = text.search(CONTRACT_MARK_RE);
+  if (first < 0) return "";
+  return text.slice(Math.max(0, first - 500), firstStopAfter(text, first));
+}
+
+export type ReportSummary = { total: number | null; active: number | null };
+
+/** Контрольные цифры из «Сводки по кредитной истории»: всего договоров и действующих. */
+export function parseSummary(text: string): ReportSummary {
+  const at = text.search(/Сводк\S*|Сводн\S*\s+информаци\S*/i);
+  if (at < 0) return { total: null, active: null };
+  const until = findObligationsStart(text);
+  const block = text.slice(at, until !== null && until > at ? Math.min(until, at + 4000) : at + 4000);
+  const num = (re: RegExp) => {
+    const m = block.match(re);
+    return m ? Number(m[1]) : null;
+  };
+  let total = num(/Всего(?:\s+(?:договоров|сч[её]тов|кредитов|обязательств|займов))?\s*[:\-–]?\s*(\d{1,4})(?!\d|\.\d)/i);
+  let active = num(/(?:Действующ\S*|Активн\S*|Открыт\S*)(?:\s+(?:договор\S*|сч[её]т\S*|кредит\S*|обязательств\S*|займ\S*))?\s*[:\-–]?\s*(\d{1,4})(?!\d|\.\d)/i);
+  if (total === null || active === null) {
+    // Табличная сводка: строка заголовков «Всего Действующих Закрытых», под ней — числа по порядку.
+    const lines = block.split("\n");
+    for (let i = 0; i < lines.length - 1; i++) {
+      const head = lines[i] ?? "";
+      if (/Всего/i.test(head) && /(Действующ|Активн|Открыт)/i.test(head) && !/\d/.test(head)) {
+        const nums = (lines[i + 1] ?? "").match(/\d+/g) ?? [];
+        const cols = head.match(/Всего|Действующ\S*|Активн\S*|Открыт\S*|Закрыт\S*|Просроч\S*|Негатив\S*/gi) ?? [];
+        cols.forEach((col, k) => {
+          const n = nums[k] !== undefined ? Number(nums[k]) : null;
+          if (/^Всего/i.test(col) && total === null) total = n;
+          if (/^(Действующ|Активн|Открыт)/i.test(col) && active === null) active = n;
+        });
+        break;
+      }
+    }
+  }
+  return { total, active };
+}
+
+const dedupKey = (c: Contract) =>
+  c.creditorName && c.number && c.date ? `${c.creditorName.toLowerCase().replace(/[^а-яёa-z0-9]/gi, "")}|${c.number.toLowerCase()}|${c.date}` : "";
+
+export function parseContracts(text: string): Contract[] {
+  const section = obligationsSection(text);
+  if (!section) return [];
+  const hits = [...section.matchAll(UID_RE)];
+
+  // Все фрагменты с одним УИД (повтор на каждой странице) — это один договор: склеиваем их.
+  const groups = new Map<string, { uid: string; parts: string[]; lookbehind: string }>();
+  hits.forEach((h, i) => {
+    const uid = h[0].toLowerCase();
+    const start = h.index ?? 0;
+    const end = hits[i + 1]?.index ?? section.length;
+    const g = groups.get(uid);
+    const part = section.slice(start + h[0].length, end);
+    if (g) g.parts.push(part);
+    else {
+      const prevEnd = i > 0 ? (hits[i - 1]?.index ?? 0) + h[0].length : 0;
+      groups.set(uid, { uid, parts: [part], lookbehind: section.slice(Math.max(prevEnd, start - 500), start) });
+    }
+  });
+
+  let found: Contract[] = [...groups.values()].map((g) => parseBlock(g.parts.join("\n"), g.lookbehind, g.uid));
+
+  // Старые договоры без УИД: делим раздел по «Номер договора».
+  if (found.length === 0) {
+    const marks = [...section.matchAll(/(?:Номер\s+договора|Договор\s+№)/gi)];
+    found = marks.map((m, i) => {
+      const start = m.index ?? 0;
+      const prevEnd = i > 0 ? (marks[i - 1]?.index ?? 0) + m[0].length : 0;
+      return parseBlock(section.slice(start, marks[i + 1]?.index ?? section.length), section.slice(Math.max(prevEnd, start - 500), start), "");
+    });
+  }
+
+  // Защита от дублей по связке «кредитор + номер + дата».
+  const byKey = new Map<string, Contract>();
+  const result: Contract[] = [];
+  for (const c of found) {
+    const key = dedupKey(c);
+    const prev = key ? byKey.get(key) : undefined;
+    if (!prev) {
+      if (key) byKey.set(key, c);
+      result.push(c);
+      continue;
+    }
+    // Дубликат: оставляем более полную запись; закрытый статус побеждает.
+    const best = filled(c) > filled(prev) ? { ...c, id: prev.id } : prev;
+    const merged = { ...best, status: prev.status === "closed" || c.status === "closed" ? ("closed" as const) : best.status };
+    byKey.set(key, merged);
+    result[result.indexOf(prev)] = merged;
+  }
+  return result.map((c) => ({ ...c, selected: c.status === "active" }));
+}
+
+export type ParsedReport = { person: Person; contracts: Contract[]; summary: ReportSummary };
 
 export function parseNbkiText(text: string): ParsedReport {
-  return { person: parsePerson(text), contracts: parseContracts(text) };
+  return { person: parsePerson(text), contracts: parseContracts(text), summary: parseSummary(text) };
 }

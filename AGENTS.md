@@ -33,3 +33,4 @@ use the editor.
 - Local-first: PDF parsing, data extraction and .docx/.zip generation run only in the browser (pdfjs-dist, docx, jszip); never send personal data to a server or store it (no DB, no localStorage) — the product promise is that data never leaves the device.
 - Heavy browser libraries are dynamically imported and preloaded from `__root` (`preloadOfflineTools`) together with the wizard route, so the wizard works offline after the first page load.
 - Statement wording lives in one pure module (`src/lib/statement.ts`) shared by .docx, email and copy actions; the NBKI parser (`src/lib/nbki-parser.ts`) is pure and covered by tests in `src/test/`.
+- NBKI parser reads contracts only inside the obligations section and stops at «Обращения / Запросы / Информационная часть» headings, grouping all fragments of one UID into one contract — request sections also carry UIDs and page headers repeat them, which inflated counts.

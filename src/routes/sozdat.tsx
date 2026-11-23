@@ -4,6 +4,7 @@ import { ArrowLeft, Check, Lock } from "lucide-react";
 import { StepUpload } from "@/components/wizard/StepUpload";
 import { StepReview } from "@/components/wizard/StepReview";
 import { StepDocuments } from "@/components/wizard/StepDocuments";
+import type { ReportSummary } from "@/lib/nbki-parser";
 import { emptyFssp, emptyPerson, type Contract, type Fssp, type Person, type Service } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -36,6 +37,7 @@ function Wizard() {
   const [fssp, setFssp] = useState<Fssp>(emptyFssp);
   const [showClosed, setShowClosed] = useState(false);
   const [parsed, setParsed] = useState(false);
+  const [summary, setSummary] = useState<ReportSummary | null>(null);
 
   const go = (n: number) => {
     setStep(n);
@@ -102,11 +104,14 @@ function Wizard() {
             person={person}
             contracts={contracts}
             parsed={parsed}
+            summary={summary}
             showClosed={showClosed}
             onShowClosed={setShowClosed}
-            onParsed={(p, c) => {
+            onParsed={(p, c, sum) => {
               setPerson(p);
               setContracts(c);
+              setSummary(sum);
+              setShowClosed(false);
               setParsed(true);
             }}
             onManual={() => go(1)}
@@ -140,6 +145,7 @@ function Wizard() {
               setPerson(emptyPerson());
               setContracts([]);
               setFssp(emptyFssp());
+              setSummary(null);
               setParsed(false);
               setShowClosed(false);
               go(0);

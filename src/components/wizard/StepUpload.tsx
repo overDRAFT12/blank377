@@ -4,20 +4,22 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import type { Contract, Person } from "@/lib/types";
+import type { ReportSummary } from "@/lib/nbki-parser";
 import { ContractSummary } from "./ContractSummary";
 
 type Props = {
   person: Person;
   contracts: Contract[];
   parsed: boolean;
+  summary: ReportSummary | null;
   showClosed: boolean;
   onShowClosed: (v: boolean) => void;
-  onParsed: (person: Person, contracts: Contract[]) => void;
+  onParsed: (person: Person, contracts: Contract[], summary: ReportSummary) => void;
   onManual: () => void;
   onNext: () => void;
 };
 
-export function StepUpload({ person, contracts, parsed, showClosed, onShowClosed, onParsed, onManual, onNext }: Props) {
+export function StepUpload({ person, contracts, parsed, summary, showClosed, onShowClosed, onParsed, onManual, onNext }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [drag, setDrag] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -44,7 +46,7 @@ export function StepUpload({ person, contracts, parsed, showClosed, onShowClosed
         return;
       }
       const result = parseNbkiText(text);
-      onParsed(result.person, result.contracts);
+      onParsed(result.person, result.contracts, result.summary);
     } catch (e) {
       console.error(e);
       setError("Не удалось прочитать PDF. Проверьте файл или заполните данные вручную.");
@@ -144,6 +146,17 @@ export function StepUpload({ person, contracts, parsed, showClosed, onShowClosed
                 {person.fullName ? `${person.fullName} · ` : ""}
                 Найдено договоров: {contracts.length}, действующих: {active.length}
               </p>
+              {summary && (summary.total !== null || summary.active !== null) && (
+                <p className="mt-1 text-sm text-muted-foreground">
+                  По сводке отчета: всего {summary.total ?? "—"}, действующих {summary.active ?? "—"}
+                </p>
+              )}
+              {summary?.active != null && summary.active !== active.length && (
+                <p className="mt-2 flex items-start gap-2 rounded-xl bg-secondary px-3 py-2 text-sm text-foreground">
+                  <AlertCircle className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                  Число действующих договоров не совпадает со сводкой — проверьте список на следующем шаге.
+                </p>
+              )}
             </div>
           </div>
           <div className="mt-6 flex items-center justify-between rounded-2xl bg-background px-4 py-3">
