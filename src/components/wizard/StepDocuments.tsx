@@ -106,9 +106,13 @@ export function StepDocuments({ person, service, fssp, contracts, onBack, onRest
           {zipping ? <Loader2 className="animate-spin" /> : <FileArchive />} Скачать все заявления (ZIP)
         </Button>
         {locked && <p className="mt-3 text-xs text-muted-foreground">Отметьте подтверждение, чтобы скачать документы.</p>}
-        <p className="mx-auto mt-4 max-w-md text-xs text-muted-foreground">
-          Перед отправкой распечатайте и подпишите заявление или приложите скан с подписью к письму.
-        </p>
+        <div className="mx-auto mt-4 max-w-md space-y-1.5 text-xs text-muted-foreground">
+          <p>Перед отправкой распечатайте и подпишите заявление или приложите скан с подписью к письму.</p>
+          <p>
+            Перед отправкой документов по электронной почте убедитесь, что в тексте заявления и приложенной справке
+            отсутствуют сведения о дислокации и задачах подразделения.
+          </p>
+        </div>
       </section>
 
       <ul className="space-y-3">

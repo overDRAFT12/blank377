@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Briefcase, Building2, ChevronDown, Gavel, Plus, Trash2, User } from "lucide-react";
+import { Briefcase, Building2, ChevronDown, Gavel, Plus, ShieldAlert, Trash2, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
@@ -89,6 +89,14 @@ export function StepReview(props: Props) {
             value={service.unit}
             onChange={(v) => setService({ ...service, unit: v })}
           />
+          <p className="flex items-start gap-2.5 rounded-2xl border border-border bg-secondary/60 px-4 py-3 text-[13px] leading-relaxed text-muted-foreground sm:col-span-2">
+            <ShieldAlert className="mt-0.5 size-4 shrink-0" />
+            <span>
+              В целях безопасности и соблюдения режима (ст. 13.14 КоАП РФ) указывайте только открытое наименование
+              ведомства или органа (например, ВНГ РФ / Вооруженные Силы РФ), без номеров закрытых частей, мест
+              дислокации и описания задач.
+            </span>
+          </p>
           <Field
             label="Дата контракта / начала участия"
             placeholder="ДД.ММ.ГГГГ"
