@@ -273,6 +273,8 @@ function parseBlock(block: string, lookbehind: string, uid: string): Contract {
   const inn = after(block, ["ИНН(?: источника| кредитора)?"], String.raw`\d{10}(?!\d)`, 20) || after(lookbehind, ["ИНН"], String.raw`\d{10}(?!\d)`, 20);
   const ogrn = after(block, ["ОГРН"], String.raw`\d{13}(?!\d)`, 20) || after(lookbehind, ["ОГРН"], String.raw`\d{13}(?!\d)`, 20);
   const rawName = findCreditorName(block) || findCreditorName(lookbehind);
+  // Шапка таблицы вместо названия кредитора — мусорная карточка: не подставляем справочник и ИНН соседнего блока.
+  if (JUNK_NAME_RE.test(rawName)) return emptyContract();
   const ref = matchCreditor(rawName || scope, inn);
   const number = after(block, ["Номер договора", "№ договора", "Договор №"], String.raw`[^\s\n]{1,40}`, 10).replace(/^№/, "");
   const date =
@@ -385,6 +387,15 @@ export function parseSummary(text: string): ReportSummary {
 const dedupKey = (c: Contract) =>
   c.creditorName && c.number && c.date ? `${c.creditorName.toLowerCase().replace(/[^а-яёa-z0-9]/gi, "")}|${c.number.toLowerCase()}|${c.date}` : "";
 
+/** Слова из шапок таблиц отчета — такие «кредиторы» являются мусором разбора. */
+const JUNK_NAME_RE = /вид\s+займа|дата\s+договора|текущ\S*\s+просроч\S*|дни\s+просроч\S*|наличие\s+просроч\S*/i;
+
+/** Мусорная карточка: заголовок таблицы вместо кредитора или полностью пустая запись (без ИНН, ОГРН, УИД, кредитора и номера). */
+export function isJunkContract(c: Contract): boolean {
+  if (JUNK_NAME_RE.test(c.creditorName)) return true;
+  return !c.creditorInn && !c.creditorOgrn && !c.uid && !c.creditorName && !c.number;
+}
+
 export function parseContracts(text: string): Contract[] {
   const section = obligationsSection(text);
   if (!section) return [];
@@ -417,12 +428,20 @@ export function parseContracts(text: string): Contract[] {
     });
   }
 
+  // Убираем мусорные карточки (шапки таблиц, пустые записи) до подсчета и показа.
+  const filtered = found.filter((c) => !isJunkContract(c));
+
   // Защита от дублей по связке «кредитор + номер + дата».
   const byKey = new Map<string, Contract>();
   const result: Contract[] = [];
-  for (const c of found) {
+  for (const c of filtered) {
     const key = dedupKey(c);
     const prev = key ? byKey.get(key) : undefined;
+    // Разные УИД — разные договоры, даже если кредитор, номер и дата совпадают (два займа в один день).
+    if (prev && c.uid && prev.uid && c.uid !== prev.uid) {
+      result.push(c);
+      continue;
+    }
     if (!prev) {
       if (key) byKey.set(key, c);
       result.push(c);
