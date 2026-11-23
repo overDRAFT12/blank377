@@ -1,5 +1,6 @@
 import { matchCreditor } from "./creditors";
 import { obligationFields } from "./nbki-fields";
+import { currentPassportFields, subjectBirthPlace, subjectInn, subjectValue } from "./nbki-person-fields";
 import { emptyPerson, type Contract, type ContractStatus, type Person } from "./types";
 
 /**
@@ -150,42 +151,22 @@ export function parsePreviousPassport(section: string): string {
 
 export function parsePerson(report: string): Person {
   // Личные данные ищем до раздела с обязательствами, чтобы не цеплять реквизиты кредиторов.
-  const head = report.slice(0, findObligationsStart(report) ?? report.length);
-  const source = head.replace(/\s/g, "").length > 100 ? head : report;
+  const contractAt = report.search(CONTRACT_MARK_RE);
+  const head = report.slice(0, findObligationsStart(report) ?? (contractAt >= 0 ? contractAt : report.length));
+  const source = head;
   const { main: text, previous } = splitPreviousDocs(source);
+  const previousAt = source.search(PREV_DOCS_RE);
+  const current = previousAt >= 0 ? source.slice(0, previousAt) : source;
   const p = emptyPerson();
   p.previousPassport = parsePreviousPassport(previous);
-  p.fullName = parseName(text);
-  p.birthDate = after(text, ["Дата рождения"], DATE, 40);
-  const place = lineAfter(text, ["Место рождения"]).replace(new RegExp(`^${DATE}\\s*`), "");
-  p.birthPlace = LABEL_WORDS.has((place.split(/\s+/)[0] ?? "").toLowerCase().replace(/[:.,]/g, "")) ? "" : place;
-
-  const series = after(text, ["Серия(?: паспорта)?"], String.raw`\d{2}\s?\d{2}`, 20);
-  const number = after(text, ["Номер(?: паспорта)?(?! договора)"], String.raw`\d{6}`, 20);
-  if (series && number) {
-    p.passportSeries = series.replace(/\s/g, "");
-    p.passportNumber = number;
-  } else {
-    const m = text.match(/Паспорт[\s\S]{0,80}?(\d{2}\s?\d{2})\s*(?:№|N|номер)?\s*(\d{6})/i);
-    if (m) {
-      p.passportSeries = (m[1] ?? "").replace(/\s/g, "");
-      p.passportNumber = m[2] ?? "";
-    }
-  }
-  p.passportIssueDate = after(text, ["Дата выдачи"], DATE, 40);
-  p.passportIssuedBy = lineAfter(text, ["Кем выдан", "Орган,? выдавший документ", "Выдан"]).replace(new RegExp(`\\s*${DATE}.*$`), "");
-  p.passportCode =
-    after(text, ["Код подразделения"], String.raw`\d{3}-\d{3}`, 30) ||
-    (text.match(/\b\d{3}-\d{3}\b(?!-)/)?.[0] ?? "");
+  p.fullName = parseName(current);
+  p.birthDate = after(current, ["Дата рождения"], DATE, 40);
+  p.birthPlace = subjectBirthPlace(current, p.fullName);
+  Object.assign(p, currentPassportFields(current));
   p.snils = (text.match(/\b\d{3}-\d{3}-\d{3}[\s-]\d{2}\b/)?.[0] ?? "").replace(/\s/, " ");
-  p.inn = after(text, ["ИНН(?: физического лица)?"], String.raw`\d{12}(?!\d)`, 20) || (text.match(/ИНН\s*:?\s*(\d{12})(?!\d)/)?.[1] ?? "");
-  p.address = lineAfter(text, [
-    "Адрес регистрации",
-    "Адрес по месту регистрации",
-    "Адрес места регистрации",
-    "Адрес регистрации по месту жительства",
-    "Адрес места жительства",
-  ]);
+  p.inn = subjectInn(text);
+  p.address = subjectValue(text, /Адрес(?:\s+по\s+месту|\s+места)?\s+регистрации(?:\s+по\s+месту\s+жительства)?|Адрес\s+места\s+жительства/i);
+  if (!p.address) p.address = lineAfter(text, ["Адрес регистрации", "Адрес по месту регистрации", "Адрес места регистрации", "Адрес места жительства"]);
   const phone = text.match(/(?:\+7|(?<!\d)8)[\s(-]*\d{3}[\s)-]*\d{3}[\s-]*\d{2}[\s-]*\d{2}(?!\d)/);
   p.phone = phone ? clean(phone[0]) : "";
   p.email =
