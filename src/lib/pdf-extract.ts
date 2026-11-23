@@ -3,20 +3,33 @@
  * (preloadOfflineTools), чтобы мастер работал в авиарежиме после открытия страницы.
  */
 type PdfJs = typeof import("pdfjs-dist");
+import { startLocalPdfWorker } from "./pdf-worker";
 
 let pdfjsPromise: Promise<PdfJs> | null = null;
 
 function loadPdfJs(): Promise<PdfJs> {
   if (!pdfjsPromise) {
     pdfjsPromise = (async () => {
-      const [lib, worker] = await Promise.all([
+      const [lib, worker, fallback] = await Promise.all([
         import("pdfjs-dist"),
         import("pdfjs-dist/build/pdf.worker.min.mjs?url"),
+        // Vite bundles this module; PDF.js never has to import an uncached URL for fallback.
+        import("pdfjs-dist/build/pdf.worker.min.mjs"),
       ]);
-      // Сразу создаем воркер, чтобы его скрипт был загружен до отключения сети.
-      lib.GlobalWorkerOptions.workerPort = new Worker(worker.default, { type: "module" });
+      lib.GlobalWorkerOptions.workerSrc = worker.default;
+      try {
+        // Wait for actual startup: fromPort alone cannot detect a script loading failure.
+        lib.GlobalWorkerOptions.workerPort = await startLocalPdfWorker(worker.default);
+      } catch (error) {
+        console.error("PDF-worker не запустился; используем локальное чтение в основном потоке. Причина:", error);
+        lib.GlobalWorkerOptions.workerPort = null;
+        const scope = globalThis as typeof globalThis & { pdfjsWorker?: { WorkerMessageHandler: unknown } };
+        scope.pdfjsWorker = { WorkerMessageHandler: fallback.WorkerMessageHandler };
+        // PDF.js uses its supported fake-worker path with the already loaded handler.
+      }
       return lib;
     })().catch((e) => {
+      console.error("Не удалось загрузить локальные модули чтения PDF. Причина:", e);
       pdfjsPromise = null;
       throw e;
     });
@@ -71,7 +84,8 @@ export async function extractPdfText(data: ArrayBuffer): Promise<string> {
       page.cleanup();
     }
   } finally {
-    void pdf.cleanup();
+    // The preloaded worker port is shared across uploads; destroy() would terminate it.
+    await pdf.cleanup();
   }
   return pages.join("\n");
 }
