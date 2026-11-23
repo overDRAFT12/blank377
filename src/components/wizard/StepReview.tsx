@@ -5,8 +5,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CollectionChoices } from "./CollectionChoices";
-import { refusalEligibilityDate, refusalTiming } from "@/lib/collection";
-import type { CollectionOptions, DocumentCategory } from "@/lib/types";
+import { canGenerateCivilian, civilianDocumentCount, refusalEligibilityDate, refusalTiming } from "@/lib/collection";
+import { emptyPropertyPetition, type CollectionOptions, type DocumentCategory, type PropertyPetition } from "@/lib/types";
+import { PropertyPetitionFields } from "./PropertyPetitionFields";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CREDITORS, matchCreditor } from "@/lib/creditors";
 import { emptyContract } from "@/lib/nbki-parser";
@@ -33,6 +34,8 @@ type Props = {
   onCategory?: (value: DocumentCategory) => void;
   collection?: CollectionOptions;
   onCollection?: (value: CollectionOptions) => void;
+  propertyPetition?: PropertyPetition;
+  onPropertyPetition?: (value: PropertyPetition) => void;
 };
 
 const PERSON_FIELDS: { key: Exclude<keyof Person, "previousPassportEnabled">; label: string; placeholder?: string; wide?: boolean; mode?: "numeric" | "email" | "tel" }[] = [
@@ -58,6 +61,9 @@ export function StepReview(props: Props) {
   const selectedCount = contracts.filter((c) => c.selected && (showClosed || c.status === "active")).length;
   const civilian = props.category === "civilian";
   const collection = props.collection ?? { thirdParties: true, debtor: false };
+  const propertyPetition = props.propertyPetition ?? emptyPropertyPetition();
+  const ready = civilian ? canGenerateCivilian(selectedCount, collection, propertyPetition) : selectedCount > 0;
+  const outputCount = civilian && collection.propertyPetition ? civilianDocumentCount(selectedCount, collection, propertyPetition) : selectedCount;
 
   const update = (id: string, patch: Partial<Contract>) =>
     setContracts(contracts.map((c) => (c.id === id ? { ...c, ...patch } : c)));
@@ -100,6 +106,8 @@ export function StepReview(props: Props) {
           ))}
         </div>
       </Card>
+
+      {civilian && collection.propertyPetition && <PropertyPetitionFields value={propertyPetition} onChange={(value) => props.onPropertyPetition?.(value)} />}
 
       {!civilian && <><Card title="Прежние паспортные данные для архива ФССП" icon={<User className="size-5" />} action={
         <Switch checked={person.previousPassportEnabled !== false} onCheckedChange={(enabled) => setPerson({ ...person, previousPassportEnabled: enabled })} aria-label="Прежние паспортные данные для архива ФССП" />
@@ -201,7 +209,7 @@ export function StepReview(props: Props) {
           )}
         </Card></>}
 
-      <Card
+      {(!civilian || collection.thirdParties || collection.debtor) && <Card
         title="Кредиторы"
         icon={<Building2 className="size-5" />}
         action={
@@ -254,14 +262,14 @@ export function StepReview(props: Props) {
             );
           })}
         </ul>
-      </Card>
+      </Card>}
 
       <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row sm:items-center sm:justify-between">
         <Button variant="soft" size="lg" className="w-full sm:w-auto" onClick={props.onBack}>
           Назад
         </Button>
-        <Button variant="pill" size="lg" className="w-full sm:w-auto" disabled={selectedCount === 0 || (civilian && !collection.thirdParties && !collection.debtor)} onClick={props.onNext}>
-          Сформировать документы{selectedCount ? ` (${selectedCount})` : ""}
+        <Button variant="pill" size="lg" className="w-full sm:w-auto" disabled={!ready} onClick={() => { if (ready) props.onNext(); }}>
+          Сформировать документы{outputCount ? ` (${outputCount})` : ""}
         </Button>
       </div>
     </div>

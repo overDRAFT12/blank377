@@ -1,4 +1,4 @@
-import type { CollectionOptions, Contract } from "./types";
+import type { CollectionOptions, Contract, PropertyPetition } from "./types";
 
 /** Calendar months, clamped to the last day of the target month (not 120 days). */
 export function refusalEligibilityDate(value: string): Date | null {
@@ -25,4 +25,13 @@ export function collectionKinds(options: CollectionOptions): ("thirdParties" | "
 
 export function collectionDocumentCount(contracts: Contract[], options: CollectionOptions) {
   return contracts.length * collectionKinds(options).length;
+}
+
+export function civilianDocumentCount(contractCount: number, options: CollectionOptions, petition: PropertyPetition) {
+  return contractCount * collectionKinds(options).length + (options.propertyPetition && petition.confirmed ? 1 : 0);
+}
+
+export function canGenerateCivilian(contractCount: number, options: CollectionOptions, petition: PropertyPetition) {
+  if (options.propertyPetition && !petition.confirmed) return false;
+  return civilianDocumentCount(contractCount, options, petition) > 0;
 }

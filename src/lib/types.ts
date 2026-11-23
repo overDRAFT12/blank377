@@ -38,8 +38,19 @@ export type Contract = {
 };
 
 export type DocumentCategory = "military" | "civilian";
-export type CollectionOptions = { thirdParties: boolean; debtor: boolean };
+export type CollectionOptions = { thirdParties: boolean; debtor: boolean; propertyPetition?: boolean };
 export const emptyCollectionOptions = (): CollectionOptions => ({ thirdParties: true, debtor: false });
+
+export type PropertyPetition = {
+  department: string;
+  address: string;
+  bailiff: string;
+  cases: { number: string; openedDate: string }[];
+  confirmed: boolean;
+};
+export const emptyPropertyPetition = (): PropertyPetition => ({
+  department: "", address: "", bailiff: "", cases: [{ number: "", openedDate: "" }], confirmed: false,
+});
 
 export type Basis = "art2_1" | "art1" | "art1_auto" | "art2";
 export const isCreditHoliday = (basis: Basis) => basis === "art1" || basis === "art1_auto";

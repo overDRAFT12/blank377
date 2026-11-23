@@ -1,4 +1,4 @@
-import { emptyCollectionOptions, emptyFssp, emptyPerson, type Contract, type DocumentCategory, type Service } from "./types";
+import { emptyCollectionOptions, emptyFssp, emptyPerson, emptyPropertyPetition, type Contract, type DocumentCategory, type Service } from "./types";
 
 export function emptyWizardData() {
   return {
@@ -8,6 +8,7 @@ export function emptyWizardData() {
     fssp: emptyFssp(),
     category: "military" as DocumentCategory,
     collection: emptyCollectionOptions(),
+    propertyPetition: emptyPropertyPetition(),
   };
 }
 

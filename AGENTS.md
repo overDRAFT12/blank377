@@ -49,3 +49,4 @@ use the editor.
 - Keep category and collection choices in wizard tab memory; gate military/FSSP outputs and email actions by category, not merely by hidden UI, so civilian documents cannot leak service data.
 - Keep collection date eligibility in a pure calendar-month helper and collection statements in the shared statement module; this protects the NBKI parser and lets all download paths use the same rules.
 - Treat the debtor-refusal output as a visibly labeled draft until the official order's form is supplied and verified; never claim an unverified layout is the prescribed form.
+- Keep the civilian property petition in separate wizard state with one number/date pair per proceeding; gate its builder and downloads on debtor confirmation and allow it without creditors, so military fields and hidden choices cannot enter this document.

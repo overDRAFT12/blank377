@@ -4,20 +4,21 @@ import { Copy, Download, FileArchive, FileText, Gavel, Heart, Loader2, Mail, Rot
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DonateDialog } from "@/components/site/DonateDialog";
-import { buildCollectionStatement, buildFsspStatement, buildStatement, emailBody, emailSubject, fileNameFor, FSSP_FILE_NAME, type Statement } from "@/lib/statement";
+import { buildCollectionStatement, buildFsspStatement, buildPropertyPetition, buildStatement, emailBody, emailSubject, fileNameFor, FSSP_FILE_NAME, PROPERTY_PETITION_FILE_NAME, type Statement } from "@/lib/statement";
 import { collectionKinds } from "@/lib/collection";
 import { downloadBlob, statementToDocx, zipBlobs } from "@/lib/docx-builder";
-import { BASIS_LABELS, type CollectionOptions, type DocumentCategory, type Contract, type Fssp, type Person, type Service } from "@/lib/types";
+import { BASIS_LABELS, type CollectionOptions, type DocumentCategory, type Contract, type Fssp, type Person, type PropertyPetition, type Service } from "@/lib/types";
 import { contractMeta } from "./ContractSummary";
 
-type Props = { person: Person; service: Service; fssp?: Fssp; contracts: Contract[]; category?: DocumentCategory; collection?: CollectionOptions; onBack: () => void; onRestart: () => void };
+type Props = { person: Person; service: Service; fssp?: Fssp; contracts: Contract[]; category?: DocumentCategory; collection?: CollectionOptions; propertyPetition?: PropertyPetition; onBack: () => void; onRestart: () => void };
 
-export function StepDocuments({ person, service, fssp, contracts, category = "military", collection, onBack, onRestart }: Props) {
+export function StepDocuments({ person, service, fssp, contracts, category = "military", collection, propertyPetition, onBack, onRestart }: Props) {
   const [zipping, setZipping] = useState(false);
   // Обязательное подтверждение: без него файлы не скачиваются и письма не готовятся.
   const [confirmed, setConfirmed] = useState(false);
-  const locked = !confirmed;
   const civilian = category === "civilian";
+  const hasPropertyPetition = civilian && collection?.propertyPetition === true;
+  const locked = !confirmed || (hasPropertyPetition && !propertyPetition?.confirmed);
   const docs = useMemo(
     () => civilian ? contracts.flatMap((c, i) => collectionKinds(collection ?? { thirdParties: true, debtor: false }).map((kind) => ({
       c, kind, file: fileNameFor(c, i).replace(/\.docx$/, kind === "thirdParties" ? "_Отзыв_третьи_лица.docx" : "_ПРОЕКТ_Отказ_взаимодействие.docx"), statement: buildCollectionStatement(person, c, kind),
@@ -26,15 +27,18 @@ export function StepDocuments({ person, service, fssp, contracts, category = "mi
   );
   // Заявление в ФССП формируется для выбранного основания только при включенном переключателе.
   const fsspStatement = useMemo<Statement | null>(
-    () => (!civilian && fssp?.enabled ? buildFsspStatement(person, service, fssp, contracts) : null),
-    [person, service, fssp, contracts, civilian],
+    () => civilian
+      ? hasPropertyPetition && propertyPetition?.confirmed ? buildPropertyPetition(person, propertyPetition) : null
+      : fssp?.enabled ? buildFsspStatement(person, service, fssp, contracts) : null,
+    [person, service, fssp, contracts, civilian, hasPropertyPetition, propertyPetition],
   );
+  const fsspFile = civilian ? PROPERTY_PETITION_FILE_NAME : FSSP_FILE_NAME;
   const total = docs.length + (fsspStatement ? 1 : 0);
 
   async function downloadFssp() {
     if (!fsspStatement || locked) return;
     try {
-      downloadBlob(await statementToDocx(fsspStatement), FSSP_FILE_NAME);
+      downloadBlob(await statementToDocx(fsspStatement), fsspFile);
     } catch (e) {
       console.error(e);
       toast.error("Не удалось сформировать файл");
@@ -57,8 +61,8 @@ export function StepDocuments({ person, service, fssp, contracts, category = "mi
     setZipping(true);
     try {
       const files = await Promise.all(docs.map(async (d) => ({ name: d.file, blob: await statementToDocx(d.statement) })));
-      if (fsspStatement) files.push({ name: FSSP_FILE_NAME, blob: await statementToDocx(fsspStatement) });
-      downloadBlob(await zipBlobs(files), civilian ? "Заявления_230-ФЗ.zip" : "Заявления_ФЗ-377.zip");
+      if (fsspStatement) files.push({ name: fsspFile, blob: await statementToDocx(fsspStatement) });
+      downloadBlob(await zipBlobs(files), civilian ? hasPropertyPetition ? "Заявления_физическим_лицам.zip" : "Заявления_230-ФЗ.zip" : "Заявления_ФЗ-377.zip");
     } catch (e) {
       console.error(e);
       toast.error("Не удалось собрать архив");
@@ -94,8 +98,8 @@ export function StepDocuments({ person, service, fssp, contracts, category = "mi
         </span>
         <h2 className="mt-6 text-3xl font-bold tracking-tight">Документы готовы</h2>
         <p className="mx-auto mt-2 max-w-md text-muted-foreground">
-          {total} {plural(total, ["заявление", "заявления", "заявлений"])} · {civilian ? "Защита от звонков (№ 230-ФЗ)" : BASIS_LABELS[service.basis]}
-          {fsspStatement && " · включая заявление в ФССП"}
+          {total} {plural(total, ["документ", "документа", "документов"])} · {civilian ? hasPropertyPetition ? docs.length ? "№ 230-ФЗ и № 229-ФЗ" : "Ходатайство в ФССП (№ 229-ФЗ)" : "Защита от звонков (№ 230-ФЗ)" : BASIS_LABELS[service.basis]}
+          {!civilian && fsspStatement && " · включая заявление в ФССП"}
         </p>
         <label
           htmlFor="confirm-data"
@@ -103,18 +107,23 @@ export function StepDocuments({ person, service, fssp, contracts, category = "mi
         >
           <Checkbox id="confirm-data" checked={confirmed} onCheckedChange={(v) => setConfirmed(v === true)} className="mt-0.5" />
           <span>
-            Я проверил(а) свои данные и реквизиты кредиторов и понимаю, что сервис не оказывает юридических услуг.
+            {hasPropertyPetition ? "Я проверил(а) свои данные и реквизиты адресатов и понимаю, что сервис не оказывает юридических услуг." : "Я проверил(а) свои данные и реквизиты кредиторов и понимаю, что сервис не оказывает юридических услуг."}
             <span className="text-destructive"> *</span>
           </span>
         </label>
         <Button variant="hero" size="xl" className="mt-6 w-full sm:w-auto" onClick={downloadAll} disabled={zipping || locked || total === 0}>
           {zipping ? <Loader2 className="animate-spin" /> : <FileArchive />} Скачать все заявления (ZIP)
         </Button>
-        {locked && <p className="mt-3 text-xs text-muted-foreground">Отметьте подтверждение, чтобы скачать документы.</p>}
+        {locked && <p className="mt-3 text-xs text-muted-foreground">{hasPropertyPetition && !propertyPetition?.confirmed ? "Вернитесь на шаг 2 и подтвердите сведения об отсутствии имущества и дохода." : "Отметьте подтверждение, чтобы скачать документы."}</p>}
         <div className="mx-auto mt-4 max-w-md space-y-1.5 text-xs text-muted-foreground">
           {civilian ? <>
-            <p>Распечатайте и подпишите каждое заявление. Сохраните копию и подтверждение вручения.</p>
-            <p className="text-sm leading-relaxed text-foreground"><strong>Внимание: заявления по № 230-ФЗ имеют юридическую силу только при отправке заказным письмом с уведомлением о вручении (Почтой России), через нотариуса либо при вручении под расписку в офисе кредитора (обычный email для этих заявлений не подходит)</strong> — ч. 1 ст. 8 № 230-ФЗ.</p>
+            <p>При подаче на бумаге распечатайте и подпишите каждый документ. Сохраните копии и подтверждение подачи.</p>
+            {docs.length > 0 && <p className="text-sm leading-relaxed text-foreground"><strong>Внимание: заявления по № 230-ФЗ имеют юридическую силу только при отправке заказным письмом с уведомлением о вручении (Почтой России), через нотариуса либо при вручении под расписку в офисе кредитора (обычный email для этих заявлений не подходит)</strong> — ч. 1 ст. 8 № 230-ФЗ.</p>}
+            {hasPropertyPetition && <div className="border-t border-border pt-3 text-left text-sm leading-relaxed text-foreground">
+              <p className="font-semibold">Ходатайство в ФССП по № 229-ФЗ</p>
+              <p className="mt-2">Подайте через портал «Госуслуги», раздел «Подача заявлений и ходатайств в ФССП», заказным письмом или через канцелярию отдела ФССП под отметку о принятии.</p>
+              <p className="mt-2 text-muted-foreground">10 дней — срок рассмотрения ходатайства по ст. 64.1, а не гарантированный срок окончания производства. Окончание зависит от результатов проверки и не списывает долг.</p>
+            </div>}
             {collection?.debtor && <p className="rounded-xl bg-warning p-3 text-warning-foreground">Вариант Б — проект, не проверенный на соответствие форме приказа ФССП России от 18.01.2024 № 6. Перед отправкой перенесите данные в официальный бланк и проверьте срок 4 месяца с даты просрочки.</p>}
           </> : <>
           <p>Перед отправкой распечатайте и подпишите заявление или приложите скан с подписью к письму.</p>
@@ -170,9 +179,9 @@ export function StepDocuments({ person, service, fssp, contracts, category = "mi
                 <Gavel className="size-5" />
               </span>
               <div className="min-w-0">
-                <p className="truncate font-semibold">Заявление в ФССП</p>
-                <p className="text-sm text-muted-foreground">{fssp?.department.trim() || "Отдел судебных приставов не указан"}</p>
-                <p className="truncate text-sm text-muted-foreground">{FSSP_FILE_NAME}</p>
+                <p className="font-semibold">{civilian ? "Ходатайство в ФССП: отсутствие имущества" : "Заявление в ФССП"}</p>
+                <p className="text-sm text-muted-foreground">{(civilian ? propertyPetition?.department.trim() : fssp?.department.trim()) || "Отдел судебных приставов не указан"}</p>
+                <p className="break-words text-sm text-muted-foreground">{fsspFile}</p>
               </div>
             </div>
             <div className="mt-4 grid gap-2">

@@ -5,7 +5,8 @@ import { StepUpload } from "@/components/wizard/StepUpload";
 import { StepReview } from "@/components/wizard/StepReview";
 import { StepDocuments } from "@/components/wizard/StepDocuments";
 import type { ReportSummary } from "@/lib/nbki-parser";
-import { emptyCollectionOptions, emptyFssp, emptyPerson, type CollectionOptions, type DocumentCategory, type Contract, type Fssp, type Person, type Service } from "@/lib/types";
+import { emptyCollectionOptions, emptyFssp, emptyPerson, emptyPropertyPetition, type PropertyPetition, type CollectionOptions, type DocumentCategory, type Contract, type Fssp, type Person, type Service } from "@/lib/types";
+import { canGenerateCivilian } from "@/lib/collection";
 import { cn } from "@/lib/utils";
 import { demoWizardData, emptyWizardData } from "@/lib/wizard-data";
 
@@ -44,6 +45,7 @@ function Wizard() {
   const [demo, setDemo] = useState(false);
   const [category, setCategory] = useState<DocumentCategory>("military");
   const [collection, setCollection] = useState<CollectionOptions>(emptyCollectionOptions);
+  const [propertyPetition, setPropertyPetition] = useState<PropertyPetition>(emptyPropertyPetition);
 
   const replaceData = (data: ReturnType<typeof emptyWizardData>) => {
     setPerson(data.person);
@@ -52,6 +54,7 @@ function Wizard() {
     setFssp(data.fssp);
     setCategory(data.category);
     setCollection(data.collection);
+    setPropertyPetition(data.propertyPetition);
     setSummary(null);
     setParsed(false);
     setShowClosed(false);
@@ -59,11 +62,13 @@ function Wizard() {
   };
 
   const go = (n: number) => {
+    if (n === 2 && !ready) return;
     setStep(n);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const selected = contracts.filter((c) => c.selected && (showClosed || c.status === "active"));
+  const ready = category === "civilian" ? canGenerateCivilian(selected.length, collection, propertyPetition) : selected.length > 0;
 
   return (
     <div className="mx-auto max-w-3xl px-5 pb-16 pt-8 md:pt-12">
@@ -83,7 +88,7 @@ function Wizard() {
           return (
             <li key={label}>
               <button
-                disabled={i > step || (i === 2 && selected.length === 0)}
+                disabled={i > step || (i === 2 && !ready)}
                 onClick={() => go(i)}
                 className="w-full text-left disabled:cursor-default"
                 aria-current={current ? "step" : undefined}
@@ -114,7 +119,7 @@ function Wizard() {
       <p className="mt-2 text-muted-foreground">
         {step === 0 && "PDF читается прямо на вашем устройстве — файл никуда не отправляется."}
         {step === 1 && "Поправьте то, что распознано неточно, и выберите категорию заявлений."}
-        {step === 2 && "Скачайте заявления и отправьте их кредиторам."}
+        {step === 2 && (category === "civilian" && collection.propertyPetition ? "Скачайте документы и направьте их адресатам." : "Скачайте заявления и отправьте их кредиторам.")}
       </p>
 
       <div className="mt-8">
@@ -150,6 +155,8 @@ function Wizard() {
             onCategory={setCategory}
             collection={collection}
             onCollection={setCollection}
+            propertyPetition={propertyPetition}
+            onPropertyPetition={setPropertyPetition}
             person={person}
             setPerson={setPerson}
             service={service}
@@ -169,6 +176,7 @@ function Wizard() {
           <StepDocuments
             category={category}
             collection={collection}
+            propertyPetition={propertyPetition}
             person={person}
             service={service}
             fssp={fssp}
