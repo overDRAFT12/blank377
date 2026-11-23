@@ -33,7 +33,7 @@ function Wizard() {
   const [step, setStep] = useState(0);
   const [person, setPerson] = useState<Person>(emptyPerson);
   const [contracts, setContracts] = useState<Contract[]>([]);
-  const [service, setService] = useState<Service>({ unit: "", contractDate: "", basis: "art2_1" });
+  const [service, setService] = useState<Service>({ unit: "", contractDate: "", basis: "art2_1", agency: "vng" });
   const [fssp, setFssp] = useState<Fssp>(emptyFssp);
   const [showClosed, setShowClosed] = useState(false);
   const [parsed, setParsed] = useState(false);
@@ -144,7 +144,7 @@ function Wizard() {
             onRestart={() => {
               setPerson(emptyPerson());
               setContracts([]);
-              setService({ unit: "", contractDate: "", basis: "art2_1" });
+              setService({ unit: "", contractDate: "", basis: "art2_1", agency: "vng" });
               setFssp(emptyFssp());
               setSummary(null);
               setParsed(false);

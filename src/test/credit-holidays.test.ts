@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { buildStatement, buildFsspStatement, emailBody, emailSubject, statementToText } from "@/lib/statement";
 import { emptyContract } from "@/lib/nbki-parser";
-import { documentPerson, emptyFssp, emptyPerson, graceStartDate, type Service } from "@/lib/types";
+import { documentPerson, emptyFssp, emptyPerson, graceStartDate, type Agency, type Service } from "@/lib/types";
 
 const person = { ...emptyPerson(), fullName: "Иванов Иван Иванович", previousPassport: "серия 4500 № 333444" };
 const c = emptyContract({ creditorName: "ПАО Сбербанк", number: "77", date: "01.01.2020" });
@@ -39,6 +39,29 @@ describe("Credit holiday statement rules", () => {
   it("uses a holiday requirement for car-variant email and copy", () => {
     expect(emailSubject(person, auto, c)).toContain("Требование о льготном периоде");
     expect(emailBody(person, auto, c)).toContain("требование о предоставлении льготного периода");
+  });
+});
+
+describe("Agency-specific wording", () => {
+  const phrases: Record<Agency, string> = {
+    mod: "мною заключен контракт о прохождении военной службы в Вооруженных Силах Российской Федерации",
+    vng: "мною заключен контракт о прохождении военной службы (службы) в войсках национальной гвардии Российской Федерации (ВНГ РФ)",
+    other: "мною заключен контракт о прохождении военной службы (службы) / пребывании в добровольческом формировании",
+  };
+  it.each(Object.entries(phrases))("uses the agreed phrase for agency %s in creditor and FSSP statements", (agency, phrase) => {
+    const s: Service = { ...service, agency: agency as Agency };
+    expect(statementToText(buildStatement(person, s, c))).toContain(phrase);
+    expect(statementToText(buildFsspStatement(person, s, emptyFssp(), [c]))).toContain(phrase);
+  });
+  it("defaults to the Rosgvardia phrase when no agency is chosen", () => {
+    expect(statementToText(buildStatement(person, service, c))).toContain(phrases.vng);
+  });
+  it.each([service, { ...service, basis: "art2_1" as const }, { ...service, basis: "art2" as const }])("lists the universal SVO certificate wording in attachments for $basis", (s) => {
+    const t = statementToText(buildStatement(person, s, c));
+    expect(t).toContain("Копия справки об участии в специальной военной операции (СВО) установленного образца.");
+  });
+  it("lists the universal SVO certificate wording in the FSSP attachments", () => {
+    expect(statementToText(buildFsspStatement(person, service, emptyFssp(), [c]))).toContain("Копия справки об участии в специальной военной операции (СВО) установленного образца.");
   });
 });
 

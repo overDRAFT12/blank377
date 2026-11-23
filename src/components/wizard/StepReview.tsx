@@ -6,7 +6,7 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CREDITORS, matchCreditor } from "@/lib/creditors";
 import { emptyContract } from "@/lib/nbki-parser";
-import { BASIS_LABELS, graceStartDate, isCreditHoliday, type Basis, type Contract, type Fssp, type Person, type Service } from "@/lib/types";
+import { AGENCY_LABELS, BASIS_LABELS, graceStartDate, isCreditHoliday, type Agency, type Basis, type Contract, type Fssp, type Person, type Service } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { Card, Field } from "./Field";
 import { StatusBadge, contractMeta } from "./ContractSummary";
@@ -83,6 +83,21 @@ export function StepReview(props: Props) {
 
       <Card title="Данные о службе" icon={<Briefcase className="size-5" />}>
         <div className="grid grid-cols-[minmax(0,1fr)] gap-4 sm:grid-cols-2">
+          <label className="block sm:col-span-2">
+            <span className="mb-1.5 block text-[13px] font-medium text-muted-foreground">Ведомство / орган службы</span>
+            <Select value={service.agency ?? "vng"} onValueChange={(val) => setService({ ...service, agency: val as Agency })}>
+              <SelectTrigger aria-label="Ведомство / орган службы" className="h-auto min-h-11 whitespace-normal text-left [&>span]:line-clamp-none [&>span]:min-w-0 [&>span]:break-words [&>svg]:shrink-0">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="w-[var(--radix-select-trigger-width)] max-w-[calc(100vw-2rem)]">
+                {(Object.keys(AGENCY_LABELS) as Agency[]).map((a) => (
+                  <SelectItem key={a} value={a} className="whitespace-normal break-words">
+                    {AGENCY_LABELS[a]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </label>
           <Field
             label="Подразделение / воинская часть"
             placeholder="в/ч 00000"

@@ -39,10 +39,31 @@ export type Contract = {
 export type Basis = "art2_1" | "art1" | "art1_auto" | "art2";
 export const isCreditHoliday = (basis: Basis) => basis === "art1" || basis === "art1_auto";
 
+export type Agency = "mod" | "vng" | "other";
+
+export const AGENCY_LABELS: Record<Agency, string> = {
+  mod: "Вооруженные Силы РФ (Минобороны России)",
+  vng: "Войска национальной гвардии РФ (ВНГ РФ)",
+  other: "Иной федеральный орган",
+};
+
+/** Согласованная по падежам фраза о заключении контракта для текста заявления. */
+export function agencyPhrase(service: Service): string {
+  switch (service.agency ?? "vng") {
+    case "mod":
+      return "мною заключен контракт о прохождении военной службы в Вооруженных Силах Российской Федерации";
+    case "other":
+      return "мною заключен контракт о прохождении военной службы (службы) / пребывании в добровольческом формировании";
+    default:
+      return "мною заключен контракт о прохождении военной службы (службы) в войсках национальной гвардии Российской Федерации (ВНГ РФ)";
+  }
+}
+
 export type Service = {
   unit: string;
   contractDate: string;
   basis: Basis;
+  agency?: Agency;
   graceStartDate?: string;
   vehicleModel?: string;
   vehicleVin?: string;

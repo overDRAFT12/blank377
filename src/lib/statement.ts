@@ -1,5 +1,5 @@
 import type { Basis, Contract, Fssp, Person, Service } from "./types";
-import { documentPerson, graceStartDate, isCreditHoliday } from "./types";
+import { agencyPhrase, documentPerson, graceStartDate, isCreditHoliday } from "./types";
 
 /** Текст заявления — чистая функция, общий источник для .docx, письма и предпросмотра. */
 export type Statement = {
@@ -56,6 +56,9 @@ export function senderLines(person: Person) {
 
 const LAW_2_1 = "ст. 2.1 Федерального закона от 07.10.2022 № 377-ФЗ (в редакции Федерального закона от 25.05.2026 № 156-ФЗ)";
 
+/** Универсальная формулировка приложения о справке СВО для всех шаблонов. */
+const SVO_CERT = "Копия справки об участии в специальной военной операции (СВО) установленного образца.";
+
 type Template = Pick<Statement, "title" | "subtitle" | "paragraphs" | "requests" | "attachments">;
 
 function holidayTemplate(service: Service, c: Contract, contractLine: string, serviceLine: string, reply: string): Template {
@@ -77,7 +80,7 @@ function holidayTemplate(service: Service, c: Contract, contractLine: string, se
       "Прошу направить измененный график платежей в течение 10 дней со дня получения настоящего требования. Предусмотренный ч. 13 ст. 1 Федерального закона № 377-ФЗ срок направления уточненного графика — не позднее дня, следующего за днем окончания льготного периода, с учетом исключения для договоров с лимитом кредитования (ч. 19 ст. 1).",
       reply,
     ],
-    attachments: ["Копия паспорта.", "Копия контракта о прохождении военной службы или справка об участии в специальной военной операции.", ...(auto ? ["Копия договора залога и документов на транспортное средство (при наличии)."] : [])],
+    attachments: ["Копия паспорта.", "Копия контракта о прохождении военной службы.", SVO_CERT, ...(auto ? ["Копия договора залога и документов на транспортное средство (при наличии)."] : [])],
   };
 }
 
@@ -92,7 +95,7 @@ export function buildStatement(person: Person, service: Service, c: Contract, to
 
   const amount = c.amount ? ` на сумму ${c.amount} руб.` : "";
   const contractLine = `Между мной и ${v(c.creditorName)} заключен кредитный договор (договор займа) № ${v(c.number)} от ${v(c.date)}${c.uid ? ` (уникальный идентификатор договора ${c.uid})` : ""}${amount}.`;
-  const serviceLine = `${v(service.contractDate)} мною заключен контракт о прохождении военной службы (службы в войсках национальной гвардии Российской Федерации)${service.unit ? `, место службы: ${service.unit}` : ""}.`;
+  const serviceLine = `${v(service.contractDate)} ${agencyPhrase(service)}${service.unit ? `, место службы: ${service.unit}` : ""}.`;
   const reply = `Ответ прошу направить по адресу: ${v(person.address)}${person.email ? `, а также на адрес электронной почты ${person.email}` : ""}.`;
 
   const byBasis: Record<Basis, Pick<Statement, "title" | "subtitle" | "paragraphs" | "requests" | "attachments">> = {
@@ -100,7 +103,7 @@ export function buildStatement(person: Person, service: Service, c: Contract, to
       title: "ЗАЯВЛЕНИЕ",
       subtitle: `о прекращении кредитных обязательств (обязательств по договору займа) на основании ${LAW_2_1}`,
       paragraphs: [
-        `${v(service.contractDate)} мною заключен контракт о прохождении службы в войсках национальной гвардии Российской Федерации (контракт о прохождении военной службы) сроком от 1 (одного) года и более для выполнения задач в ходе специальной военной операции${service.unit ? ` (место службы: ${service.unit})` : ""}.`,
+        `${v(service.contractDate)} ${agencyPhrase(service)} сроком от 1 (одного) года и более для выполнения задач в ходе специальной военной операции${service.unit ? ` (место службы: ${service.unit})` : ""}.`,
         `Между мной и ${v(c.creditorName)} заключен кредитный договор (договор займа) № ${v(c.number)} от ${v(c.date)}${c.uid ? `, уникальный идентификатор договора (УИД) ${c.uid}` : ""}${amount}.`,
         `До 1 мая 2026 года в отношении меня вступил в законную силу судебный акт о взыскании задолженности по указанному договору и (или) возбуждено исполнительное производство${c.courtAct.trim() ? ` (${c.courtAct.trim()})` : ""}.`,
         `В соответствии со ${LAW_2_1} обязательства лица, заключившего указанный контракт, по кредитному договору (договору займа) прекращаются в пределах 10 000 000 (десяти миллионов) рублей при соблюдении условий, установленных данной статьей. Все условия в отношении меня соблюдены.`,
@@ -114,7 +117,7 @@ export function buildStatement(person: Person, service: Service, c: Contract, to
       attachments: [
         "Копия паспорта.",
         "Копия контракта о прохождении службы (военной службы).",
-        "Копия справки войсковой части (подразделения) войск национальной гвардии Российской Федерации об участии в специальной военной операции.",
+        SVO_CERT,
         "Копия постановления судебного пристава-исполнителя / судебного акта.",
       ],
     },
@@ -137,7 +140,8 @@ export function buildStatement(person: Person, service: Service, c: Contract, to
       ],
       attachments: [
         "Копия паспорта.",
-        "Справка об участии в специальной военной операции (копия контракта).",
+        "Копия контракта о прохождении военной службы.",
+        SVO_CERT,
         "Копия справки МСЭ об установлении инвалидности I группы.",
       ],
     },
@@ -232,7 +236,7 @@ export function buildFsspStatement(person: Person, service: Service, fssp: Fssp,
   const holiday = isCreditHoliday(service.basis);
 
   const paragraphs = [
-    `${v(service.contractDate)} мною заключен контракт о прохождении службы в войсках национальной гвардии Российской Федерации (контракт о прохождении военной службы)${service.basis === "art2_1" ? " сроком от 1 (одного) года и более" : ""} для выполнения задач в ходе специальной военной операции${service.unit ? ` (место службы: ${service.unit})` : ""}.`,
+    `${v(service.contractDate)} ${agencyPhrase(service)}${service.basis === "art2_1" ? " сроком от 1 (одного) года и более" : ""} для выполнения задач в ходе специальной военной операции${service.unit ? ` (место службы: ${service.unit})` : ""}.`,
     casesText
       ? `В отношении меня возбуждены исполнительные производства ${casesText} о взыскании задолженности по кредитным договорам (договорам займа).`
       : "В отношении меня возбуждались исполнительные производства о взыскании задолженности по кредитным договорам (договорам займа).",
@@ -262,7 +266,7 @@ export function buildFsspStatement(person: Person, service: Service, fssp: Fssp,
     attachments: [
       "Копия паспорта.",
       "Копия контракта о прохождении службы (военной службы).",
-      "Копия справки войсковой части (подразделения) войск национальной гвардии Российской Федерации об участии в специальной военной операции.",
+      SVO_CERT,
       "Копии постановлений судебного пристава-исполнителя / судебных актов (при наличии).",
     ],
     date: today,
