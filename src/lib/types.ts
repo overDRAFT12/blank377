@@ -14,6 +14,7 @@ export type Person = {
   email: string;
   /** Прежние паспортные данные (для проверки архива ФССП). */
   previousPassport: string;
+  previousPassportEnabled?: boolean;
 };
 
 export type ContractStatus = "active" | "closed";
@@ -35,13 +36,21 @@ export type Contract = {
   courtAct: string;
 };
 
-export type Basis = "art2_1" | "art1" | "art2";
+export type Basis = "art2_1" | "art1" | "art1_auto" | "art2";
+export const isCreditHoliday = (basis: Basis) => basis === "art1" || basis === "art1_auto";
 
 export type Service = {
   unit: string;
   contractDate: string;
   basis: Basis;
+  graceStartDate?: string;
+  vehicleModel?: string;
+  vehicleVin?: string;
+  pledgeContract?: string;
 };
+
+export const graceStartDate = (service: Service) => service.graceStartDate ?? service.contractDate;
+export const documentPerson = (person: Person): Person => person.previousPassportEnabled === false ? { ...person, previousPassport: "" } : person;
 
 export const emptyPerson = (): Person => ({
   fullName: "",
@@ -58,6 +67,7 @@ export const emptyPerson = (): Person => ({
   phone: "",
   email: "",
   previousPassport: "",
+  previousPassportEnabled: true,
 });
 
 /** Данные для отдельного заявления в службу судебных приставов. */
@@ -73,6 +83,7 @@ export const emptyFssp = (): Fssp => ({ enabled: true, department: "", address: 
 
 export const BASIS_LABELS: Record<Basis, string> = {
   art2_1: "Списание до 10 млн ₽ по ст. 2.1 ФЗ-377",
-  art1: "Кредитные каникулы по ст. 1 ФЗ-377",
+  art1: "Кредитные каникулы по ст. 1 ФЗ-377 (беззалоговый кредит / заем)",
+  art1_auto: "Кредитные каникулы по ст. 1 ФЗ-377 (кредит под залог автомобиля)",
   art2: "Полное прекращение обязательств по ст. 2 ФЗ-377",
 };

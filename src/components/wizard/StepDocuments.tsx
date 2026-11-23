@@ -20,9 +20,9 @@ export function StepDocuments({ person, service, fssp, contracts, onBack, onRest
     () => contracts.map((c, i) => ({ c, file: fileNameFor(c, i), statement: buildStatement(person, service, c) })),
     [person, service, contracts],
   );
-  // Заявление в ФССП — только для ст. 2.1 и при включенном переключателе на шаге 2.
+  // Заявление в ФССП формируется для выбранного основания только при включенном переключателе.
   const fsspStatement = useMemo<Statement | null>(
-    () => (fssp?.enabled && service.basis === "art2_1" ? buildFsspStatement(person, service, fssp, contracts) : null),
+    () => (fssp?.enabled ? buildFsspStatement(person, service, fssp, contracts) : null),
     [person, service, fssp, contracts],
   );
   const total = docs.length + (fsspStatement ? 1 : 0);

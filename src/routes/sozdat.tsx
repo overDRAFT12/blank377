@@ -144,6 +144,7 @@ function Wizard() {
             onRestart={() => {
               setPerson(emptyPerson());
               setContracts([]);
+              setService({ unit: "", contractDate: "", basis: "art2_1" });
               setFssp(emptyFssp());
               setSummary(null);
               setParsed(false);

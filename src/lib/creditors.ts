@@ -1,3 +1,5 @@
+import { EXTRA_CREDITORS } from "./creditors-extra";
+
 /**
  * Справочник популярных банков и МФО. Реквизиты носят справочный характер —
  * перед отправкой пользователь сверяет адрес и email с сайтом кредитора или реестром ЦБ РФ.
@@ -10,7 +12,8 @@ export type CreditorRef = {
   ogrn: string;
   address: string;
   email: string;
-  kind: "bank" | "mfo";
+  kind: "bank" | "mfo" | "pko";
+  source?: string;
   keywords: string[];
 };
 
@@ -29,15 +32,16 @@ export const CREDITORS: CreditorRef[] = [
   { id: "raif", short: "Райффайзенбанк", name: "АО «Райффайзенбанк»", inn: "7744000302", ogrn: "1027739326449", address: "129090, г. Москва, ул. Троицкая, д. 17, стр. 1", email: "info@raiffeisen.ru", kind: "bank", keywords: ["райффайзен"] },
   { id: "rshb", short: "Россельхозбанк", name: "АО «Россельхозбанк»", inn: "7725114488", ogrn: "1027700342890", address: "119034, г. Москва, Гагаринский пер., д. 3", email: "office@rshb.ru", kind: "bank", keywords: ["россельхозбанк"] },
   { id: "zaymer", short: "Займер", name: "ПАО МФК «Займер»", inn: "4205271785", ogrn: "1134205019189", address: "630099, г. Новосибирск, ул. Октябрьская, д. 52", email: "info@zaymer.ru", kind: "mfo", keywords: ["займер"] },
-  { id: "ekapusta", short: "Екапуста", name: "ООО МКК «Русинтерфинанс»", inn: "5408292849", ogrn: "1125476023298", address: "630055, г. Новосибирск, ул. Мусы Джалиля, д. 11", email: "info@ekapusta.com", kind: "mfo", keywords: ["русинтерфинанс", "екапуста"] },
-  { id: "webbankir", short: "Веббанкир", name: "ООО МФК «Веббанкир»", inn: "7733812126", ogrn: "1127746672130", address: "125466, г. Москва, ул. Соколово-Мещерская, д. 29, оф. 308", email: "support@webbankir.com", kind: "mfo", keywords: ["веббанкир"] },
-  { id: "moneyman", short: "MoneyMan", name: "ООО МФК «Мани Мен»", inn: "7704784072", ogrn: "1117746442670", address: "121096, г. Москва, ул. Василисы Кожиной, д. 1, оф. Д13", email: "info@moneyman.ru", kind: "mfo", keywords: ["мани мен", "манимен", "moneyman"] },
-  { id: "lime", short: "Лайм-Займ", name: "ООО МФК «Лайм-Займ»", inn: "7724889891", ogrn: "1137746831606", address: "630102, г. Новосибирск, ул. Кирова, д. 48, оф. 1401", email: "info@lime-zaim.ru", kind: "mfo", keywords: ["лайм-займ", "лайм займ"] },
-  { id: "turbo", short: "Турбозайм", name: "ООО МФК «Турбозайм»", inn: "7702820127", ogrn: "1137746702367", address: "111024, г. Москва, ул. Авиамоторная, д. 50, стр. 2", email: "info@turbozaim.ru", kind: "mfo", keywords: ["турбозайм"] },
-  { id: "bystro", short: "Быстроденьги", name: "ООО МФК «Быстроденьги»", inn: "7325081622", ogrn: "1087325005899", address: "117152, г. Москва, Загородное ш., д. 1, корп. 1", email: "info@bystrodengi.ru", kind: "mfo", keywords: ["быстроденьги"] },
+  { id: "ekapusta", short: "Екапуста", name: "ООО МКК «Русинтерфинанс»", inn: "5408292849", ogrn: "1125476023298", address: "630055, г. Новосибирск, ул. Гнесиных, д. 10/1, офис 202", email: "info@ekapusta.com", kind: "mfo", keywords: ["русинтерфинанс", "екапуста"], source: "https://cbr.ru/finorg/foinfo/?inn=5408292849" },
+  { id: "webbankir", short: "Веббанкир", name: "ООО МФК «Веббанкир»", inn: "7733812126", ogrn: "1127746630846", address: "125627, г. Москва, ул. Соколово-Мещерская, д. 25, пом. 1Н/3", email: "info@webbankir.ru", kind: "mfo", keywords: ["веббанкир", "вэббанкир", "webbankir"], source: "https://cbr.ru/finorg/foinfo/?inn=7733812126" },
+  { id: "moneyman", short: "MoneyMan", name: "ООО МФК «Мани Мен»", inn: "7704784072", ogrn: "1117746442670", address: "123290, г. Москва, ул. Ермакова Роща, д. 1, стр. 1, пом. 175Н", email: "info@moneyman.ru", kind: "mfo", keywords: ["мани мен", "манимен", "moneyman"], source: "https://cbr.ru/finorg/foinfo/?inn=7704784072" },
+  { id: "lime", short: "Лайм-Займ", name: "ООО МФК «Лайм-Займ»", inn: "7724889891", ogrn: "1137746831606", address: "630102, г. Новосибирск, ул. Кирова, д. 48, оф. 1401", email: "support@lime-zaim.ru", kind: "mfo", keywords: ["лайм-займ", "лайм займ", "lime-займ", "lime-zaim"], source: "https://cbr.ru/finorg/foinfo/?inn=7724889891" },
+  { id: "turbo", short: "Турбозайм", name: "ООО МФК «Турбозайм»", inn: "7702820127", ogrn: "1137746702367", address: "121087, г. Москва, ул. Барклая, д. 6, стр. 5, пом. 23П/4", email: "info@turbozaim.ru", kind: "mfo", keywords: ["турбозайм"], source: "https://cbr.ru/finorg/foinfo/?inn=7702820127" },
+  { id: "bystro", short: "Быстроденьги", name: "ООО МФК «Быстроденьги»", inn: "7325081622", ogrn: "1087325005899", address: "121087, г. Москва, ул. Барклая, д. 6, стр. 5, пом. 23П/4", email: "info@bistrodengi.ru", kind: "mfo", keywords: ["быстроденьги"], source: "https://cbr.ru/finorg/foinfo/?inn=7325081622" },
+  ...EXTRA_CREDITORS,
 ];
 
-const norm = (s: string) => s.toLowerCase().replace(/ё/g, "е").replace(/[«»"“”]/g, "");
+const norm = (s: string) => s.toLowerCase().replace(/ё/g, "е").replace(/[«»"“”]/g, "").replace(/[-–—]/g, " ").replace(/\s+/g, " ").trim();
 
 /** Найти кредитора в справочнике по ИНН или ключевому слову в названии/тексте. */
 export function matchCreditor(text: string, inn?: string): CreditorRef | undefined {
@@ -47,5 +51,8 @@ export function matchCreditor(text: string, inn?: string): CreditorRef | undefin
   }
   const t = norm(text);
   if (!t) return undefined;
-  return CREDITORS.find((c) => c.keywords.some((k) => t.includes(norm(k))));
+  return CREDITORS.find((c) => c.keywords.some((k) => {
+    const key = norm(k);
+    return key.length <= 3 ? new RegExp(`(?:^|[^а-яa-z0-9])${key}(?=$|[^а-яa-z0-9])`, "i").test(t) : t.includes(key);
+  }));
 }

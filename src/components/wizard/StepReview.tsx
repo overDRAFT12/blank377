@@ -4,9 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CREDITORS } from "@/lib/creditors";
+import { CREDITORS, matchCreditor } from "@/lib/creditors";
 import { emptyContract } from "@/lib/nbki-parser";
-import { BASIS_LABELS, type Basis, type Contract, type Fssp, type Person, type Service } from "@/lib/types";
+import { BASIS_LABELS, graceStartDate, isCreditHoliday, type Basis, type Contract, type Fssp, type Person, type Service } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { Card, Field } from "./Field";
 import { StatusBadge, contractMeta } from "./ContractSummary";
@@ -26,7 +26,7 @@ type Props = {
   onNext: () => void;
 };
 
-const PERSON_FIELDS: { key: keyof Person; label: string; placeholder?: string; wide?: boolean; mode?: "numeric" | "email" | "tel" }[] = [
+const PERSON_FIELDS: { key: Exclude<keyof Person, "previousPassportEnabled">; label: string; placeholder?: string; wide?: boolean; mode?: "numeric" | "email" | "tel" }[] = [
   { key: "fullName", label: "ФИО полностью", placeholder: "Иванов Иван Иванович", wide: true },
   { key: "birthDate", label: "Дата рождения", placeholder: "ДД.ММ.ГГГГ" },
   { key: "birthPlace", label: "Место рождения" },
@@ -35,12 +35,6 @@ const PERSON_FIELDS: { key: keyof Person; label: string; placeholder?: string; w
   { key: "passportIssueDate", label: "Дата выдачи", placeholder: "ДД.ММ.ГГГГ" },
   { key: "passportCode", label: "Код подразделения", placeholder: "000-000" },
   { key: "passportIssuedBy", label: "Кем выдан", wide: true },
-  {
-    key: "previousPassport",
-    label: "Прежние паспортные данные (если менялся паспорт — для проверки архива ФССП)",
-    placeholder: "серия 0000 № 000000, выдан …",
-    wide: true,
-  },
   { key: "snils", label: "СНИЛС", placeholder: "000-000-000 00" },
   { key: "inn", label: "ИНН", placeholder: "12 цифр", mode: "numeric" },
   { key: "address", label: "Адрес регистрации", wide: true },
@@ -81,6 +75,12 @@ export function StepReview(props: Props) {
         </div>
       </Card>
 
+      <Card title="Прежние паспортные данные для архива ФССП" icon={<User className="size-5" />} action={
+        <Switch checked={person.previousPassportEnabled !== false} onCheckedChange={(enabled) => setPerson({ ...person, previousPassportEnabled: enabled })} aria-label="Прежние паспортные данные для архива ФССП" />
+      }>
+        {person.previousPassportEnabled !== false && <Field label="Прежние паспортные данные" placeholder="серия 0000 № 000000, выдан …" value={person.previousPassport} onChange={(value) => setPerson({ ...person, previousPassport: value })} />}
+      </Card>
+
       <Card title="Данные о службе" icon={<Briefcase className="size-5" />}>
         <div className="grid grid-cols-[minmax(0,1fr)] gap-4 sm:grid-cols-2">
           <Field
@@ -98,31 +98,34 @@ export function StepReview(props: Props) {
           <label className="block sm:col-span-2">
             <span className="mb-1.5 block text-[13px] font-medium text-muted-foreground">Основание</span>
             <Select value={service.basis} onValueChange={(v) => setService({ ...service, basis: v as Basis })}>
-              <SelectTrigger aria-label="Основание">
+              <SelectTrigger aria-label="Основание" className="h-auto min-h-11 whitespace-normal text-left [&>span]:line-clamp-none [&>span]:min-w-0 [&>span]:break-words [&>svg]:shrink-0">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="w-[var(--radix-select-trigger-width)] max-w-[calc(100vw-2rem)]">
                 {(Object.keys(BASIS_LABELS) as Basis[]).map((b) => (
-                  <SelectItem key={b} value={b}>
+                  <SelectItem key={b} value={b} className="whitespace-normal break-words">
                     {BASIS_LABELS[b]}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </label>
+          {isCreditHoliday(service.basis) && <Field className="sm:col-span-2" label="Дата начала льготного периода" placeholder="ДД.ММ.ГГГГ" value={graceStartDate(service)} onChange={(value) => setService({ ...service, graceStartDate: value })} />}
+          {service.basis === "art1_auto" && <>
+            <Field label="Марка и модель автомобиля" value={service.vehicleModel ?? ""} onChange={(value) => setService({ ...service, vehicleModel: value })} />
+            <Field label="VIN-номер (или госномер)" value={service.vehicleVin ?? ""} onChange={(value) => setService({ ...service, vehicleVin: value })} />
+            <Field className="sm:col-span-2" label="Реквизиты договора залога (если оформлен отдельным договором)" value={service.pledgeContract ?? ""} onChange={(value) => setService({ ...service, pledgeContract: value })} />
+          </>}
         </div>
       </Card>
 
-      {service.basis === "art2_1" && (
-        <Card title="Судебные приставы (ФССП)" icon={<Gavel className="size-5" />}>
-          <label className="flex cursor-pointer items-center justify-between gap-4 rounded-2xl bg-background px-4 py-3">
-            <span className="text-[15px]">Сформировать также заявление для судебных приставов (ФССП)</span>
+      <Card title="Документ для судебных приставов (ФССП)" icon={<Gavel className="size-5" />} action={
             <Switch
               checked={fssp.enabled}
               onCheckedChange={(v) => setFssp({ ...fssp, enabled: v })}
-              aria-label="Сформировать также заявление для судебных приставов (ФССП)"
+              aria-label="Документ для судебных приставов (ФССП)"
             />
-          </label>
+          }>
           {fssp.enabled && (
             <div className="mt-4 grid grid-cols-[minmax(0,1fr)] gap-4 sm:grid-cols-2">
               <Field
@@ -148,7 +151,6 @@ export function StepReview(props: Props) {
             </div>
           )}
         </Card>
-      )}
 
       <Card
         title="Кредиторы"
@@ -222,7 +224,7 @@ function ContractEditor({ contract: c, onChange, onRemove }: { contract: Contrac
   return (
     <div className="border-t border-border p-4 pt-5">
       <label className="mb-4 block">
-        <span className="mb-1.5 block text-[13px] font-medium text-muted-foreground">Справочник банков и МФО</span>
+        <span className="mb-1.5 block text-[13px] font-medium text-muted-foreground">Справочник банков, МФО и ПКО</span>
         <Select onValueChange={pick}>
           <SelectTrigger aria-label="Выбрать из справочника">
             <SelectValue placeholder="Выбрать из справочника — адрес и email подставятся" />
@@ -231,6 +233,12 @@ function ContractEditor({ contract: c, onChange, onRemove }: { contract: Contrac
             <SelectGroup>
               <SelectLabel>Банки</SelectLabel>
               {CREDITORS.filter((r) => r.kind === "bank").map((r) => (
+                <SelectItem key={r.id} value={r.id}>{r.short}</SelectItem>
+              ))}
+            </SelectGroup>
+            <SelectGroup>
+              <SelectLabel>ПКО</SelectLabel>
+              {CREDITORS.filter((r) => r.kind === "pko").map((r) => (
                 <SelectItem key={r.id} value={r.id}>{r.short}</SelectItem>
               ))}
             </SelectGroup>
@@ -244,8 +252,14 @@ function ContractEditor({ contract: c, onChange, onRemove }: { contract: Contrac
         </Select>
       </label>
       <div className="grid grid-cols-[minmax(0,1fr)] gap-4 sm:grid-cols-2">
-        <Field className="sm:col-span-2" label="Наименование кредитора" value={c.creditorName} onChange={(v) => onChange({ creditorName: v })} />
-        <Field label="ИНН кредитора" inputMode="numeric" value={c.creditorInn} onChange={(v) => onChange({ creditorInn: v })} />
+        <Field className="sm:col-span-2" label="Наименование кредитора" value={c.creditorName} onChange={(v) => {
+          const ref = matchCreditor(v);
+          onChange({ creditorName: v, ...(ref ? { creditorInn: ref.inn, creditorOgrn: ref.ogrn, creditorAddress: ref.address, creditorEmail: ref.email } : {}) });
+        }} />
+        <Field label="ИНН кредитора" inputMode="numeric" value={c.creditorInn} onChange={(v) => {
+          const ref = /^\d{10}$/.test(v) ? CREDITORS.find((r) => r.inn === v) : undefined;
+          onChange({ creditorInn: v, ...(ref ? { creditorName: ref.name, creditorOgrn: ref.ogrn, creditorAddress: ref.address, creditorEmail: ref.email } : {}) });
+        }} />
         <Field label="ОГРН кредитора" inputMode="numeric" value={c.creditorOgrn} onChange={(v) => onChange({ creditorOgrn: v })} />
         <Field className="sm:col-span-2" label="Юридический адрес" value={c.creditorAddress} onChange={(v) => onChange({ creditorAddress: v })} hint="Сверьте адрес и email с сайтом кредитора или реестром ЦБ РФ." />
         <Field label="Email для обращений" inputMode="email" value={c.creditorEmail} onChange={(v) => onChange({ creditorEmail: v })} />

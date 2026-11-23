@@ -1,4 +1,5 @@
 import { matchCreditor } from "./creditors";
+import { obligationFields } from "./nbki-fields";
 import { emptyPerson, type Contract, type ContractStatus, type Person } from "./types";
 
 /**
@@ -113,7 +114,7 @@ function titleCase(s: string) {
     .join("");
 }
 
-const PREV_DOCS_RE = /Ранее\s+выданн\S*\s+(?:документ\S*|паспорт\S*)(?:[^\n]*)/i;
+const PREV_DOCS_RE = /(?:Ранее\s+выданн\S*|Прежни\S*|Предыдущи\S*)\s+(?:документ\S*|паспорт\S*)\s*:?[ \t]*/i;
 const NEXT_SECTION_RE =
   /\n\s*(?:СНИЛС|ИНН|Адрес|Телефон|Электронная почта|E-?mail|Договор|Сведения|Кредитн|Информационная часть|Основная часть|Сделки|Обязательств|Титульная|Запрос)/i;
 
@@ -130,7 +131,7 @@ export function splitPreviousDocs(text: string): { main: string; previous: strin
 /** Прежние паспорта из раздела «Ранее выданные документы»: «серия 0000 № 000000, выдан …, ДД.ММ.ГГГГ». */
 export function parsePreviousPassport(section: string): string {
   if (!section.trim()) return "";
-  const re = /(?<!\d)(\d{2}\s?\d{2})(?!\d)[^\d\n]{0,20}?(?<!\d)(\d{6})(?!\d)/g;
+  const re = /(?<!\d)(\d{2}[ \t]?\d{2})(?!\d)[^\d]{0,40}?(?<!\d)(\d{6})(?!\d)/g;
   const hits = [...section.matchAll(re)];
   const out: string[] = [];
   hits.forEach((h, i) => {
@@ -270,17 +271,18 @@ export function emptyContract(partial: Partial<Contract> = {}): Contract {
 
 function parseBlock(block: string, lookbehind: string, uid: string): Contract {
   const scope = `${lookbehind}\n${block}`;
-  const inn = after(block, ["ИНН(?: источника| кредитора)?"], String.raw`\d{10}(?!\d)`, 20) || after(lookbehind, ["ИНН"], String.raw`\d{10}(?!\d)`, 20);
-  const ogrn = after(block, ["ОГРН"], String.raw`\d{13}(?!\d)`, 20) || after(lookbehind, ["ОГРН"], String.raw`\d{13}(?!\d)`, 20);
+  const fields = obligationFields(block, lookbehind);
+  const inn = fields.inn || after(block, ["ИНН(?: источника| кредитора)?"], String.raw`\d{10}(?!\d)`, 20) || after(lookbehind, ["ИНН"], String.raw`\d{10}(?!\d)`, 20);
+  const ogrn = fields.ogrn || after(block, ["ОГРН"], String.raw`\d{13}(?!\d)`, 20) || after(lookbehind, ["ОГРН"], String.raw`\d{13}(?!\d)`, 20);
   const rawName = findCreditorName(block) || findCreditorName(lookbehind);
   // Шапка таблицы вместо названия кредитора — мусорная карточка: не подставляем справочник и ИНН соседнего блока.
   if (JUNK_NAME_RE.test(rawName)) return emptyContract();
   const ref = matchCreditor(rawName || scope, inn);
-  const number = after(block, ["Номер договора", "№ договора", "Договор №"], String.raw`[^\s\n]{1,40}`, 10).replace(/^№/, "");
+  const number = fields.number || after(block, ["Номер договора", "№ договора", "Договор №"], String.raw`[^\s\n]{1,40}`, 10).replace(/^№/, "");
   const date =
     after(block, ["Дата (?:заключения|совершения|открытия)(?: сделки| договора)?", "Дата сделки"], DATE, 40) ||
     (block.match(new RegExp(DATE))?.[0] ?? "");
-  const amount = after(
+  const amount = fields.amount || after(
     block,
     ["Сумма(?: и валюта)?(?: обязательства| кредита| займа| сделки)?", "Лимит(?: кредитования)?"],
     String.raw`\d[\d\s]{0,12}(?:[.,]\d{2})?`,

@@ -34,3 +34,7 @@ use the editor.
 - Heavy browser libraries are dynamically imported and preloaded from `__root` (`preloadOfflineTools`) together with the wizard route, so the wizard works offline after the first page load.
 - Statement wording lives in one pure module (`src/lib/statement.ts`) shared by .docx, email and copy actions; the NBKI parser (`src/lib/nbki-parser.ts`) is pure and covered by tests in `src/test/`.
 - NBKI parser reads contracts only inside the obligations section and stops at «Обращения / Запросы / Информационная часть» headings, grouping all fragments of one UID into one contract — request sections also carry UIDs and page headers repeat them, which inflated counts.
+- Supplementary NBKI opening/source field extraction stays in a pure helper without changing identity or section grouping, to protect existing creditor/date/UID parsing.
+- Keep the existing holiday basis key for unsecured loans and a separate secured-vehicle key; all document and email paths use the same basis predicate, to prevent divergent outputs.
+- Optional document fields remain in tab memory when disabled and are excluded by statement builders, so toggling does not lose edits or leak disabled data into downloads.
+- Additional creditor references carry public source URLs and remain bundled offline; never fetch creditors at runtime, to keep personal report data on-device.
