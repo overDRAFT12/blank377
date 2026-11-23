@@ -2,6 +2,21 @@ import { describe, expect, it } from "vitest";
 import { detectStatus, parseNbkiText, parseSummary } from "@/lib/nbki-parser";
 
 describe("Obligations are active unless explicitly closed", () => {
+  it("uses the same default for contracts without a UID", () => {
+    const { contracts } = parseNbkiText("Обязательства\nНомер договора OPEN\nДата закрытия —\nНомер договора CLOSED\nДата закрытия 01.02.2026\nЗапросы\nНомер договора REQUEST");
+    expect(contracts.map((c) => [c.number, c.status, c.selected])).toEqual([
+      ["OPEN", "active", true],
+      ["CLOSED", "closed", false],
+    ]);
+  });
+  it("keeps repeated UID fragments active unless one explicitly closes it", () => {
+    const uid = "00000000-1111-2222-3333-444455556666-0";
+    const open = `Обязательства\nУИд договора ${uid}\nНомер договора OPEN\nДата закрытия —\nУИд договора ${uid}\nСостояние Исполняется`;
+    const parsed = parseNbkiText(open);
+    expect(parsed.contracts).toHaveLength(1);
+    expect(parsed.contracts[0]?.status).toBe("active");
+    expect(parseNbkiText(`${open}\nДата фактического прекращения 01.02.2026`).contracts[0]?.status).toBe("closed");
+  });
   it.each(["Просрочен", "Счет открыт", "Активен", "Исполняется", "Судебное взыскание"])("keeps %s active", (status) => {
     expect(detectStatus(`Статус договора ${status}`)).toBe("active");
   });
