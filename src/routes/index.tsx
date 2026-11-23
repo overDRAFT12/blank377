@@ -173,7 +173,7 @@ function Index() {
       <section id="law" className="mx-auto max-w-6xl px-5 py-20 md:py-28">
         <p className="text-center text-sm font-semibold text-primary">Правовая база и условия списания</p>
         <h2 className="text-section mx-auto mt-3 max-w-3xl text-balance text-center">
-          На каком основании списываются долги (ФЗ № 377-ФЗ)
+          На каком основании списываются долги (Федеральный закон № 377-ФЗ)
         </h2>
         <div className="mt-14 grid gap-5 md:grid-cols-3">
           {LAW.map((l) => (
