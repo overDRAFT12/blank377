@@ -1,7 +1,8 @@
 import { MessagesSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ChannelButton } from "./ChannelButton";
 import { LegalDialog } from "./LegalDialog";
-import { SUPPORT_LABEL, SUPPORT_URL, SUPPORT_WARNING, PDN_NOTE, REPO_URL, SITE_NAME } from "@/lib/site";
+import { CHANNEL_LABEL, SUPPORT_LABEL, SUPPORT_URL, SUPPORT_WARNING, PDN_NOTE, REPO_URL, SITE_NAME } from "@/lib/site";
 import { LEGAL_DOCS } from "./legal-texts";
 
 export function Footer() {
@@ -31,17 +32,20 @@ export function Footer() {
             {LEGAL_DOCS.map((doc) => <LegalDialog key={doc.id} doc={doc} />)}
           </div>
         </div>
-        <div className="mt-5 max-w-xl">
-          <Button asChild variant="outline" className="h-auto whitespace-normal text-left">
-          <a
-            href={SUPPORT_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 px-4 py-2 text-[13px] font-medium"
-          >
-            <MessagesSquare className="size-4 text-primary" /> {SUPPORT_LABEL}
-          </a>
-          </Button>
+        <div className="mt-5 max-w-2xl">
+          <div className="flex flex-wrap gap-3">
+            <ChannelButton label={CHANNEL_LABEL} />
+            <Button asChild variant="outline" className="h-auto whitespace-normal text-left">
+            <a
+              href={SUPPORT_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-4 py-2 text-[13px] font-medium"
+            >
+              <MessagesSquare className="size-4 text-primary" /> {SUPPORT_LABEL}
+            </a>
+            </Button>
+          </div>
           <p className="mt-2 text-[11px] leading-relaxed">{SUPPORT_WARNING}</p>
         </div>
       </div>

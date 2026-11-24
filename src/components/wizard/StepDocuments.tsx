@@ -4,6 +4,8 @@ import { Copy, Download, FileArchive, FileText, Gavel, Heart, Loader2, Mail, Rot
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DonateDialog } from "@/components/site/DonateDialog";
+import { ChannelButton } from "@/components/site/ChannelButton";
+import { CHANNEL_STEP_LABEL, CHANNEL_STEP_NOTE } from "@/lib/site";
 import { buildCollectionStatement, buildFsspStatement, buildPropertyPetition, buildStatement, emailBody, emailSubject, fileNameFor, FSSP_FILE_NAME, PROPERTY_PETITION_FILE_NAME, type Statement } from "@/lib/statement";
 import { collectionKinds } from "@/lib/collection";
 import { downloadBlob, statementToDocx, zipBlobs } from "@/lib/docx-builder";
@@ -200,6 +202,11 @@ export function StepDocuments({ person, service, fssp, contracts, category = "mi
         <Button variant="ghost" size="lg" className="rounded-full" onClick={onRestart}>
           <RotateCcw /> Начать заново
         </Button>
+      </div>
+
+      <div className="rounded-3xl border border-border bg-card/60 px-6 py-5">
+        <ChannelButton label={CHANNEL_STEP_LABEL} variant="tint" />
+        <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{CHANNEL_STEP_NOTE}</p>
       </div>
 
       <div className="flex flex-col items-center justify-between gap-4 rounded-3xl bg-card/60 px-6 py-5 text-center sm:flex-row sm:text-left">
