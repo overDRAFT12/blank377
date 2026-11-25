@@ -6,13 +6,52 @@
 // Never set ssr.external or resolve.external: the Worker has no runtime module resolution, so
 // the build fails. Never add compression (compressPublicAssets, vite-plugin-compression):
 // hosting already compresses at the edge.
-// You can pass additional config via defineConfig({ vite: { ... }, etc... }) if needed.
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
+import { VitePWA } from "vite-plugin-pwa";
 
 export default defineConfig({
   tanstackStart: {
-    // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
-    // nitro/vite builds from this
     server: { entry: "server" },
+  },
+  vite: {
+    plugins: [
+      VitePWA({
+        // Static public/manifest.json is linked from __root; registration lives only in src/lib/offline.ts.
+        manifest: false,
+        injectRegister: null,
+        registerType: "autoUpdate",
+        filename: "sw.js",
+        outDir: "dist/client",
+        devOptions: { enabled: false },
+        workbox: {
+          globDirectory: "dist/client",
+          globPatterns: ["**/*.{js,mjs,css,woff,woff2,png,jpg,jpeg,ico,svg,json,webmanifest}"],
+          maximumFileSizeToCacheInBytes: 15 * 1024 * 1024,
+          navigateFallback: null,
+          cleanupOutdatedCaches: true,
+          clientsClaim: true,
+          skipWaiting: true,
+          runtimeCaching: [
+            {
+              // Public page shells only (SSR HTML has no personal data). Never API or OAuth.
+              urlPattern: ({ request, url }) =>
+                url.origin === self.location.origin &&
+                request.method === "GET" &&
+                !url.pathname.startsWith("/~oauth") &&
+                !url.pathname.startsWith("/api/") &&
+                !url.pathname.includes("_server") &&
+                (request.mode === "navigate" || url.pathname === "/" || url.pathname === "/sozdat"),
+              handler: "NetworkFirst",
+              options: {
+                cacheName: "blank377-pages",
+                networkTimeoutSeconds: 4,
+                matchOptions: { ignoreSearch: true },
+                expiration: { maxEntries: 20 },
+              },
+            },
+          ],
+        },
+      }),
+    ],
   },
 });

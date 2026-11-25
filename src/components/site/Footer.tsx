@@ -2,6 +2,7 @@ import { MessagesSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ChannelButton } from "./ChannelButton";
 import { LegalDialog } from "./LegalDialog";
+import { InstallAppButton } from "./InstallAppButton";
 import { CHANNEL_LABEL, SUPPORT_LABEL, SUPPORT_URL, SUPPORT_WARNING, PDN_NOTE, REPO_URL, SITE_NAME } from "@/lib/site";
 import { LEGAL_DOCS } from "./legal-texts";
 
@@ -34,6 +35,7 @@ export function Footer() {
         </div>
         <div className="mt-5 max-w-2xl">
           <div className="flex flex-wrap gap-3">
+            <InstallAppButton />
             <ChannelButton label={CHANNEL_LABEL} />
             <Button asChild variant="outline" className="h-auto whitespace-normal text-left">
             <a
